@@ -1,0 +1,317 @@
+---
+title: "Market Expectations and Mangerial Turnover"
+author: 
+  - Ronan Gallagher
+  - Barry Quinn
+format: 
+    pdf:
+      fig-pos: "H"
+bibliography: references.bib
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: false
+rm(list = ls())
+library(brms)
+library(tidyverse)
+library(rstan)
+library (tidybayes)
+
+logit_baseline<-readRDS("./model/logit_poach_base.rds")
+hazard_cty<-readRDS("./model/grp_lvl_poach_cty.rds")
+hazard_season<-readRDS("./model/grp_lvl_poach_season.rds")
+hazard_div <- readRDS("./model/grp_lvl_poach_div.rds")
+logit_cty <-readRDS("./model/logit_grp_lvl_poach_cty.rds")
+logit_div <- readRDS("./model/logit_grp_lvl_poach_div.rds")
+logit_season <- readRDS("./model/logit_grp_lvl_poach_season.rds")
+
+hazard_div |>   
+  spread_draws(r_Div[Division,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Div) |>
+  left_join(hazard_div 
+            |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won +
+           Intercept+Pct_of_Possible_Points_Won) -> hazard_div 
+
+logit_div |>   
+  spread_draws(r_Div[Division,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Div) |>
+  left_join(logit_div |> 
+              spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> logit_div 
+
+hazard_cty |>
+  spread_draws(r_country[Country,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_country) |>
+  left_join(hazard_cty |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> hazard_cty
+
+logit_cty |>
+  spread_draws(r_country[Country,Variable]) |>
+  pivot_wider(names_from = Variable,values_from =r_country) |>
+  left_join(logit_cty |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> logit_cty
+  
+hazard_season |>
+  spread_draws(r_Season[Season,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Season) |>
+  left_join(hazard_season |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> hazard_season
+
+logit_season |>
+  spread_draws(r_Season[Season,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Season) |>
+  left_join(logit_season |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+Intercept+Pct_of_Possible_Points_Won) -> logit_season
+  
+```
+
+```{r}
+# Creating the named vector in R
+cty_factor_vector <- c('E' = "England", 'SP' = "Spain", 'SC' = "Scotland", 'I' = "Italy",
+                    'F' = "France", 'D' = "Germany", 'P' = "Portugal", 
+                    'N' = "Netherlands", 'T' = "Turkey", 'G' = "Greece", 
+                    'B' = "Belgium")
+# Assuming df$factor_var is your factor variable
+logit_cty$cty_factor <- factor(logit_cty$Country, labels = cty_factor_vector)
+hazard_cty$cty_factor <- factor(hazard_cty$Country, labels = cty_factor_vector)
+```
+
+# Introduction
+
+# Literature
+
+**CEO Turnover and Firm Performance**
+
+A robust body of research demonstrates a negative correlation between poor organizational performance and involuntary CEO dismissal (@defond1999effect). Both stock returns and accounting metrics indicate that failing to achieve performance benchmarks raises turnover probability, though the magnitude of effects prove statistically significant yet substantively minimal across analyses [@gibbons1990relative; @farrell2003impact].
+
+Building on seminal insights by @march1958organizations and @cyert1963behavioral, subsequent scholarship illuminates how boards of directors explore solutions and prompt managerial changes when results underperform expectations. Managers able to realise forecasted outputs appear less susceptible to replacement than those unable to reach projected thresholds, irrespective of analogous absolute performance [@bandura1991self; @haleblian2006cognitive]. Boards frequently assess leaders against firm-specific expectations, benchmarking actual versus anticipated outcomes and attributing divergence to the CEO [@greve1998performance; @defond1999effect; @wiersema2011ceo]. As proxies for performance expectations, earnings forecasts strongly predict turnover likelihood, though also capture managerial efforts toward systematic issue management [@ieper2014performance]
+
+**Strategic Expectations Management**
+
+Endogeneity concerns thus emerge, as information asymmetries afford CEOs latitude to strategically time media announcements and influence external stakeholder interpretations [@westphal2010matter; @westphal2011avoiding]. Similarly, football managers degrade expectations through injury pronouncements and other excuses that deflect responsibility. Evidence remains limited regarding precise managerial tactics shaping performance benchmarks [@pieper2014performance]. Some research proposes that higher expectations decrease capital costs and increase share prices [@francis1997relative], while other studies indicate systematic “expectation management” wherein CEOs restrict forecast escalation [@bartov2002rewards; @goyal2002board]. This restraint purportedly reduces involuntary turnover incidence.
+
+The majority of empirical literature upholds poor performance as the primary antecedent of managerial replacement [@groves1995china; @hudson2004managerial]. Though post-succession improvements appear frequently observed, findings regarding causal impacts on organizational outcomes remain mixed [@cools2003value]. Difficulties persist in identifying relevant temporal lags and indicators within corporate performance-turnover analyses.
+
+**Parallels in Sport**
+
+In drawing parallels with corporate leadership, football managers constitute integral strategic and operational decision-makers whose choices shape competitiveness and results [@pieper2014performance]. While factors like injuries constrain agency, negative performance often escalates dismissal odds given close linkages between the managerial role and team outputs [@hoffler2003new]. Contemporary scholarship utilizing bookmaker odds reveals that failure to achieve expected sporting outcomes precipitates coaching turnover [@pieper2014performance; @vanours2016inseason; @bruinshoofd2003manager].
+
+In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, determining league position overrides individual attributes in predicting managerial survival. Yet other analyses of match outcomes bypass control group issues while accounting for difficulty variances. @koning2003econometric and @forrest2000behaviour find sporadic evidence that replacement temporarily boosts performance. But several studies propose frequent “scapegoating” wherein termination aims to appease stakeholders rather than improve competition, with managerial change reliably hampering short-term results [@koning2003econometric; @dobson2011economics; @audas2002impact].
+
+@tena2007within importantly highlight financial relegation risks and failing historical powers as motivational factors. While the former escalates turnover incidence, the latter proves insignificant as inferior clubs primarily dismissed coaches. Ultimately, teams appear to utilize termination following perceived underperformance relative to expectations shaped by factors like salary budgets.
+
+# Methodology
+
+A primary objective when modeling panel data grouped by country, sports leagues, seasons or other categories is allowing for and assessing systematic differences in effects across groups. Standard panel data techniques like fixed effects or random effects models enable some degree of heterogeneity by permitting intercept variation across groups @greene2003econometric. However, these approaches constrain slope coefficients and error variances to be constant. This could overlook meaningful group-level distributions in parameters beyond intercepts.
+
+Hierarchical Bayesian (HB) models instead provide a cohesive framework for directly specifying group-level distributions for any parameters that may logically vary across categories @gelman2013bayesian. Hierarchical Bayesian (HB) models allow both individual and group-level estimates through partial pooling across the model hierarchy. The group-level distributions essentially serve as priors that regularize or shrink the extreme individual-level parameter estimates towards the group mean. At the same time, the group-level estimates themselves are still informed by and capture the cohort and contextual influences from the individual data.
+
+So partial pooling provides a balanced trade-off - it shrinks less stable individual estimates to avoid overfitting, while still allowing the group distributions to represent meaningful variation across cohorts, contexts or other structures in the data. The key idea is that partial pooling up the hierarchy uses the group-level distributions to stabilize and strengthen estimates, while retaining the ability to capture subgroup patterns.
+
+Moreover, HB models facilitate incorporating complex covariance patterns and nonlinear relationships in parameters across groups. @zhang2021racial uses Bayesian cross-classified multilevel analysis to model subtle temporal and group-level interactions in voter turnout - difficult to formulate through panel data methods.
+
+In summary, HB techniques yield a unified modeling approach to characterize inter-group parameter variation. The methodology subsumes traditional panel data econometrics through its flexibility while addressing limitations. The formal probability structure also regulates instability and provides natural group-level effect quantification - particularly critical when data within clusters is sparse. This establishes hierarchical Bayesian modeling as a powerful tool for econometric grouped data analyses.
+
+## Model Specification
+
+The models are:
+
+1.  **HB Logit Model**
+
+$$P(\text{Poached}_{i} = 1 | \text{Points}_{i}, \text{RSI}_{i}) = \mathrm{logit}^{-1}(\alpha_{l[i]} + \beta_{1,l[i]} \text{Points}_{i} + \beta_{2,l[i]} \text{RSI}_{i} + \epsilon_{i})$$
+
+2.  **HB Proportional Hazard Model**
+
+$$h(t|X_{i}) = h_{0}(t)\exp(\alpha_{l[i]} + \beta_{1,l[i]} \text{Points}_{i} + \beta_{2,l[i]} \text{RSI}_{i}) $$
+
+The subscript $l[i]$ allows coefficient variation across groups. We investigate hierarchies across season, country and country-tier. Hierarchical priors on $\alpha,\beta$ parameters share data to obtain better estimates, even for new leagues or clubs.
+
+# Results
+
+## Baseline logit model
+
+```{r}
+#| label: baseline-logit
+#| eval: false
+dfanal=read_csv("./data/df_anal_new.csv")
+rstan_options(auto_write=TRUE)  
+options(mc.cores=parallel::detectCores ()) # Run on multiple cores
+#set_cmdstan_path(path="/home/barry/.cmdstan/cmdstan-2.33.1")
+dfanal |> drop_na(event,Standardized_CumRS,Pct_of_Possible_Points_Won,Div,`Domestic Games in Charge`)
+dfanal$games_to_event<-dfanal$`Domestic Games in Charge`
+model <- brm(poach ~ 1 + Standardized_CumRS + Pct_of_Possible_Points_Won,
+             data = dfanal,
+             family = bernoulli(), # Specifies a logit model for binary outcome
+             warmup = 1000, # Number of warmup iterations for the MCMC
+             iter = 5000, # Total number of iterations for the MCMC
+             chains = 4, # Number of chains
+             cores = 4, # Number of cores for parallel execution
+             control = list(adapt_delta = 0.95), # Control parameters for the NUTS sampler
+             seed=5678)
+
+end=Sys.time()
+print(end-start)
+model |> summary()
+
+saveRDS(model ,"logit_poach_base.rds")
+
+```
+
+## Baseline hazard model
+
+## group level logit models
+
+```{r}
+logit_cty |> 
+  ungroup() |>
+  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(cty_factor,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(cty_factor,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_cty.png",width = 12,height = 8)  
+
+```
+
+```{r}
+logit_season |> 
+  ungroup() |>
+  select(Season,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Season&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>
+  mutate(first_year = as.numeric(map_chr(str_split(Season, "-"), ~ .x[1]))) |>
+  ggplot(aes(x = reorder(Season,first_year),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effects on the probability of poaching",
+       subtitle="Posterior probabilities from a bayesian hierarchical model",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_season.png",width = 12,height = 8)  
+```
+
+```{r}
+logit_div |> 
+  ungroup() |>
+  select(Division,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Division &!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |> 
+   group_by(Division,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(Division,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effects on the probability of poaching",
+       subtitle="Posterior probabilities from a bayesian hierarchical model",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_div.png",width = 12,height = 8)  
+```
+
+## group level hazard models
+
+```{r}
+hazard_cty |> 
+  ungroup() |>
+  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(cty_factor,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(cty_factor,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on poaching hazard rate",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/hazard_by_cty.png",width = 12,height = 8)  
+
+```
+
+```{r}
+hazard_season |> 
+  ungroup() |>
+  select(Season,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Season&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>
+  mutate(first_year = as.numeric(map_chr(str_split(Season, "-"), ~ .x[1]))) |>
+  ggplot(aes(x = reorder(Season,first_year),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effects on the probability of poaching",
+       subtitle="Posterior probabilities from a bayesian hierarchical model",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/hazard_by_season.png",width = 12,height = 8)  
+```
+
+```{r}
+hazard_div |> 
+  ungroup() |>
+  select(Division,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Division&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(Division,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(Division,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on poaching hazard rate",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/hazard_by_div.png",width = 12,height = 8)  
+
+```
