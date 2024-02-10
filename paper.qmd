@@ -13,6 +13,7 @@ execute:
   message: false
 ---
 
+
 ```{r}
 #| include: false
 rm(list = ls())
@@ -21,13 +22,13 @@ library(tidyverse)
 library(rstan)
 library (tidybayes)
 
-logit_baseline<-readRDS("./model/logit_poach_base.rds")
-hazard_cty<-readRDS("./model/grp_lvl_poach_cty.rds")
-hazard_season<-readRDS("./model/grp_lvl_poach_season.rds")
-hazard_div <- readRDS("./model/grp_lvl_poach_div.rds")
-logit_cty <-readRDS("./model/logit_grp_lvl_poach_cty.rds")
-logit_div <- readRDS("./model/logit_grp_lvl_poach_div.rds")
-logit_season <- readRDS("./model/logit_grp_lvl_poach_season.rds")
+logit_baseline<-readRDS("models/logit_poach_base.rds")
+hazard_cty<-readRDS("models/grp_lvl_poach_cty.rds")
+hazard_season<-readRDS("models/grp_lvl_poach_season.rds")
+hazard_div <- readRDS("models/grp_lvl_poach_div.rds")
+logit_cty <-readRDS("models/logit_grp_lvl_poach_cty.rds")
+logit_div <- readRDS("models/logit_grp_lvl_poach_div.rds")
+logit_season <- readRDS("models/logit_grp_lvl_poach_season.rds")
 
 hazard_div |>   
   spread_draws(r_Div[Division,Variable]) |>
