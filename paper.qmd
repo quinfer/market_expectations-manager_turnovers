@@ -145,7 +145,7 @@ $$P(\text{Poached}_{i} = 1 | \text{Points}_{i}, \text{RSI}_{i}) = \mathrm{logit}
 
 $$h(t|X_{i}) = h_{0}(t)\exp(\alpha_{l[i]} + \beta_{1,l[i]} \text{Points}_{i} + \beta_{2,l[i]} \text{RSI}_{i}) $$
 
-The subscript $l[i]$ allows coefficient variation across groups. We investigate hierarchies across season, country and country-tier. Hierarchical priors on $\alpha,\beta$ parameters share data to obtain better estimates, even for new leagues or clubs.
+The $t$ is the time to hazard in games in charges. The subscript $l[i]$ allows coefficient variation across groups. We investigate hierarchies across season, country and country-tier. Hierarchical priors on $\alpha,\beta$ parameters share data to obtain better estimates, even for new leagues or clubs.
 
 # Results
 
@@ -177,6 +177,31 @@ model |> summary()
 saveRDS(model ,"logit_poach_base.rds")
 
 ```
+
+
+```{r}
+logit |> 
+  ungroup() |>
+  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(cty_factor,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(cty_factor,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_cty.png",width = 12,height = 8)  
+
+```
+
 
 ## Baseline hazard model
 
