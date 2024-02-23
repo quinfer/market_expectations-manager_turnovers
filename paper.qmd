@@ -131,17 +131,11 @@ In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, 
 We build a hand-craft database on the complete manager turnover profiles of all professional football managers across 11 European leagues for 23 playing seasons up to 2023-2024.  We use 
 three sources 1. [league of managers association](https://leaguemanagers.com) a body representing professional managers in English football. 2. [Soccer base](https://www.soccerbase.com) a betting website 3. [Transfermkt website](https://www.transfermarkt.co.uk) a large website which records manager, player and team profiles as well as a large array of analytics of the valuation of playing staff.  The raw data is gathered using a series of web scrapping algorithms. Our primary source of informatoin is Transfermkt, but we use other sources to validate these manager spells. 
 
-```{python}
-import pandas as pd
-from pandas_profiling import ProfileReport
+```{r}
+library(readxl)
+spells_raw = read_csv("raw_data/club_manager_histories_df.csv")
+skimr::skim(spells_raw)
 
-spells_raw = pd.read_csv("raw_data/club_manager_histories_df.csv")
-
-# Generating a report
-profile = ProfileReport(spells_raw, title="Profile data", explorative=True)
-
-# To display the report within a Jupyter Notebook
-profile.to_notebook_iframe()
 ```
 
 
@@ -208,7 +202,9 @@ saveRDS(model ,"logit_poach_base.rds")
 logit_baseline |>
   rename("Points of of Possible"=b_Pct_of_Possible_Points_Won,
          "Cumulative Relative Strength"=b_Standardized_CumRS)
-  pivot_longer(!.draw&!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
+         
+          |>
+  pivot_longer(!.draw &!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
   ggplot(aes(y = fixed_effect,
              x=draws)) +
   stat_slab() +
