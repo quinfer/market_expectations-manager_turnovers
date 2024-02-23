@@ -30,6 +30,9 @@ logit_cty <-readRDS("models/logit_grp_lvl_poach_cty.rds")
 logit_div <- readRDS("models/logit_grp_lvl_poach_div.rds")
 logit_season <- readRDS("models/logit_grp_lvl_poach_season.rds")
 
+logit_baseline |> 
+  spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won)->logit_baseline
+
 hazard_div |>   
   spread_draws(r_Div[Division,Variable]) |>
   pivot_wider(names_from = Variable,values_from = r_Div) |>
@@ -121,6 +124,9 @@ In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, 
 
 @tena2007within importantly highlight financial relegation risks and failing historical powers as motivational factors. While the former escalates turnover incidence, the latter proves insignificant as inferior clubs primarily dismissed coaches. Ultimately, teams appear to utilize termination following perceived underperformance relative to expectations shaped by factors like salary budgets.
 
+# Data
+
+
 # Methodology
 
 A primary objective when modeling panel data grouped by country, sports leagues, seasons or other categories is allowing for and assessing systematic differences in effects across groups. Standard panel data techniques like fixed effects or random effects models enable some degree of heterogeneity by permitting intercept variation across groups @greene2003econometric. However, these approaches constrain slope coefficients and error variances to be constant. This could overlook meaningful group-level distributions in parameters beyond intercepts.
@@ -151,9 +157,11 @@ The subscript $l[i]$ allows coefficient variation across groups. We investigate 
 
 ## Baseline logit model
 
+
 ```{r}
 #| label: baseline-logit
 #| eval: false
+# This code is set yo not run, to set to run change eval to eval: true
 dfanal=read_csv("./data/df_anal_new.csv")
 rstan_options(auto_write=TRUE)  
 options(mc.cores=parallel::detectCores ()) # Run on multiple cores
@@ -176,6 +184,27 @@ model |> summary()
 
 saveRDS(model ,"logit_poach_base.rds")
 
+```
+
+```{r}
+logit_baseline |>
+  rename("Points of of Possible"=b_Pct_of_Possible_Points_Won,
+         "Cumulative Relative Strength"=b_Standardized_CumRS)
+  pivot_longer(!.draw&!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
+  ggplot(aes(y = fixed_effect,
+             x=draws)) +
+  stat_slab() +
+  labs(x="",
+       title="Baseline model for probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Fixed Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_baseline.png",width = 12,height = 8)  
+
+  
 ```
 
 ## Baseline hazard model
