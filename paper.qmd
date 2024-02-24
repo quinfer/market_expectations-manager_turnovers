@@ -133,7 +133,8 @@ three sources 1. [league of managers association](https://leaguemanagers.com) a 
 
 ```{r}
 library(readxl)
-spells_raw = read_csv("raw_data/club_manager_histories_df.csv")
+spells1 = read_csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
+spells2 = read_csv("raw_data/club_manager_histories_df.csv")
 skimr::skim(spells_raw)
 
 ```
