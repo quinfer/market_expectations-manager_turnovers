@@ -13,7 +13,6 @@ execute:
   message: false
 ---
 
-
 ```{r}
 #| include: false
 rm(list = ls())
@@ -128,17 +127,15 @@ In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, 
 # Data
 
 ## Manager spell profiles
-We build a hand-craft database on the complete manager turnover profiles of all professional football managers across 11 European leagues for 23 playing seasons up to 2023-2024.  We use 
-three sources 1. [league of managers association](https://leaguemanagers.com) a body representing professional managers in English football. 2. [Soccer base](https://www.soccerbase.com) a betting website 3. [Transfermkt website](https://www.transfermarkt.co.uk) a large website which records manager, player and team profiles as well as a large array of analytics of the valuation of playing staff.  The raw data is gathered using a series of web scrapping algorithms. Our primary source of informatoin is Transfermkt, but we use other sources to validate these manager spells. 
+
+We build a hand-craft database on the complete manager turnover profiles of all professional football managers across 11 European leagues for 23 playing seasons up to 2023-2024. We use three sources 1. [league of managers association](https://leaguemanagers.com) a body representing professional managers in English football. 2. [Soccer base](https://www.soccerbase.com) a betting website 3. [Transfermkt website](https://www.transfermarkt.co.uk) a large website which records manager, player and team profiles as well as a large array of analytics of the valuation of playing staff. The raw data is gathered using a series of web scrapping algorithms. Our primary source of information is Transfermkt, but we use other sources to validate these manager spells.
 
 ```{r}
 library(readxl)
 spells1 = read_csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
-spells2 = read_csv("raw_data/club_manager_histories_df.csv")
+lspells2 = read_csv("raw_data/club_manager_histories_df.csv")
 skimr::skim(spells_raw)
-
 ```
-
 
 # Methodology
 
@@ -169,7 +166,6 @@ The $t$ is the time to hazard in games in charges. The subscript $l[i]$ allows c
 # Results
 
 ## Baseline logit model
-
 
 ```{r}
 #| label: baseline-logit
@@ -243,7 +239,6 @@ ggsave(filename = "./plots/logit_baseline.png",width = 12,height = 8)
   
 ```
 
-
 ```{r}
 logit |> 
   ungroup() |>
@@ -266,7 +261,6 @@ logit |>
 ggsave(filename = "./plots/logit_by_cty.png",width = 12,height = 8)  
 
 ```
-
 
 ## Baseline hazard model
 
