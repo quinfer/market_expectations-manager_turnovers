@@ -130,53 +130,98 @@ In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, 
 
 We build a hand-craft database on the complete manager turnover profiles of all professional football managers across 11 European leagues for 23 playing seasons up to 2023-2024. We use three sources 1. [league of managers association](https://leaguemanagers.com) a body representing professional managers in English football. 2. [Soccer base](https://www.soccerbase.com) a betting website 3. [Transfermkt website](https://www.transfermarkt.co.uk) a large website which records manager, player and team profiles as well as a large array of analytics of the valuation of playing staff. The raw data is gathered using a series of web scrapping algorithms. Our primary source of information is Transfermkt, but we use other sources to validate these manager spells.
 
+```{r}
+library(dplyr)
+library(purrr)
+spells <- read.csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
+# Define season_to_date() function here
+season_to_date <- function(season) {
+  if (is.na(season) | length(gsub("/", "", season)) == 0) {
+    return(NA_real_)
+  }
+
+  parts <- strsplit(season, "/")[[1]]
+  month <- as.numeric(parts[2])
+   if (month < 8) {
+     year <- paste0("20", substr(parts[1], 1, 2))
+   } else {
+     year <- paste0("19", substr(parts[1], 1, 2))
+   }
+
+  date_str <- paste0("01/08/", year)
+  as.Date(paste(date_str, collapse = "/"), "%d/%m/%Y")
+}
+
+data_helper <- spells1 |>
+  mutate(row_id=row_number()) |>
+  filter(is.na(Finish)&contract_expiry!="-") |>
+  select(contract_expiry, Finish,row_id)
+data_helper$Finish<-as.Date(map_dbl(data_helper$contract_expiry, season_to_date))
+spells |>
+  mutate(row_id=row_number()) |>
+  left_join(data_helper, by="row_id") |>
+  mutate(Start = as.Date(Start),
+         Finish = as.Date(Finish)) |>
+  mutate(days_in_charge = as.numeric(Finish - Start)) ->spells
+
+```
+
 ```{python}
-# Read the CSV files
+import pandas as pd
+import time
+from transformers import pipeline
+
+generator = pipeline("text-generation")
+# Load model directly
+# from transformers import AutoTokenizer, AutoModelForCausalLM
+# 
+# tokenizer = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+# model = AutoModelForCausalLM.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")  
+# Use a pipeline as a high-level helper
+#from transformers import pipeline
+#pipe = pipeline("text-generation", model="mistralai/Mixtral-8x7B-Instruct-v0.1")
+
+# Load the unique club names from the CSV file
 spells1 = pd.read_csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
-spells2 = pd.read_csv("raw_data/club_manager_histories_df.csv")
+club_names=spells1['club'].unique()
 
-# Get a statistical summary of the data
-summary1 = spells1.describe()
-summary2 = spells2.describe()
+# Initialize an empty list to store the results
+results = []
 
-print(summary1)
-print(summary2)
+# Iterate over the array of club names and add a timer for each iteration
+start_time = time.time()
+for club in club_names:
+    # Prepare the prompt for the model
+    prompt = f"Provide information about the soccer club {club}: its country of origin,  division level, and whether it is a first  team or a youth team."
+    
+    # Generate the response using the model
+    start = time.time()
+    responses=generator(prompt)
+    
+    # Assuming the first (or only) response is what we're interested in
+    response_text = responses[0]
+    
+    # Store the response, elapsed time for this iteration and total elapsed time in our results list
+    results.append({'ClubName': club, 'Information': response_text, 'ElapsedTimePerIteration': time.time() - start, 
+'TotalElapsedTime': time.time() - start_time})
+    
+# Convert the results list to a DataFrame
+import pandas as pd
+results_df = pd.DataFrame(results)
+
+# Display the DataFrame to verify the results
+print(results_df)
+
+# Specify the file path for the CSV file
+csv_file_path = 'soccer_clubs_information_hf.csv'
+
+# Save the DataFrame to a CSV file
+results_df.to_csv(csv_file_path, index=False)
+
+print(f"Results have been saved to {csv_file_path}")
+
 ```
 
-```{python}
-# Filter rows where the 'Finish' column is NaN
-filtered_spells1 = spells1[spells1['Finish'].isna()]
-
-# Create a frequency table of the 'contract_expiry' column
-frequency_table = filtered_spells1['contract_expiry'].value_counts()
-
-print(frequency_table)
-```
-
-```{python}
-import numpy as np
-def season_to_date(season):
-    if pd.isnull(season) or '/' not in season:
-        return np.nan
-
-    parts = season.split('/')
-    if int(parts[1]) < 80:
-        year = '20' + parts[1]
-    else:
-        year = '19' + parts[1]
-
-    date_str = '01/08/' + year
-    return datetime.strptime(date_str, '%d/%m/%Y')
-
-```
-
-```{python}
-# Apply the function only to rows where 'Date' is NaN
-mask=spells1['Finish'].isna()
-spells1.loc[mask, 'Finish'] = spells1.loc[mask,'contract_expiry'].apply(season_to_date)
-#spells1[spells1['Finish'].isna()].value_counts()
-spells1['Finish'].isna().value_counts()
-```
 
 # Methodology
 
