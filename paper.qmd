@@ -132,6 +132,7 @@ We build a hand-craft database on the complete manager turnover profiles of all 
 
 ```{python}
 # Read the CSV files
+import pandas as pd
 spells1 = pd.read_csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
 spells2 = pd.read_csv("raw_data/club_manager_histories_df.csv")
 
@@ -155,6 +156,7 @@ print(frequency_table)
 
 ```{python}
 import numpy as np
+from datetime import datetime 
 def season_to_date(season):
     if pd.isnull(season) or '/' not in season:
         return np.nan
@@ -174,8 +176,21 @@ def season_to_date(season):
 # Apply the function only to rows where 'Date' is NaN
 mask=spells1['Finish'].isna()
 spells1.loc[mask, 'Finish'] = spells1.loc[mask,'contract_expiry'].apply(season_to_date)
-#spells1[spells1['Finish'].isna()].value_counts()
 spells1['Finish'].isna().value_counts()
+
+```
+```{python}
+#spells1['spell_in_days']=spells1['Finish']-spells1['Start']
+#spells1['spell_in_days']
+import csv
+team_names=spells1['club'].unique()
+# Convert the Series to a DataFrame
+teams_df = pd.DataFrame(team_names,columns=['TeamName'])
+teams_df.to_csv('teams.csv')
+```
+
+```{python}
+team_names
 ```
 
 # Methodology
