@@ -133,7 +133,9 @@ We build a hand-craft database on the complete manager turnover profiles of all 
 ```{r}
 library(dplyr)
 library(purrr)
-spells <- read.csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
+#spells <- read.csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
+spells <- read.csv("raw_data/manager_spells_from_manager_urls.csv")
+
 # Define season_to_date() function here
 season_to_date <- function(season) {
   if (is.na(season) | length(gsub("/", "", season)) == 0) {
@@ -152,19 +154,97 @@ season_to_date <- function(season) {
   as.Date(paste(date_str, collapse = "/"), "%d/%m/%Y")
 }
 
-data_helper <- spells1 |>
+data_helper <- spells |>
   mutate(row_id=row_number()) |>
   filter(is.na(Finish)&contract_expiry!="-") |>
   select(contract_expiry, Finish,row_id)
 data_helper$Finish<-as.Date(map_dbl(data_helper$contract_expiry, season_to_date))
 spells |>
   mutate(row_id=row_number()) |>
-  left_join(data_helper, by="row_id") |>
+  left_join(data_helper |> select(-Finish), by="row_id") |>
   mutate(Start = as.Date(Start),
          Finish = as.Date(Finish)) |>
   mutate(days_in_charge = as.numeric(Finish - Start)) ->spells
-
+spells |> distinct(name,club,Finish) |> nrow()
+# find duplicates for name,club,Finish
+spells |> drop_na(Start,Finish) |> group_by(name,club,Finish) |> summarise(n=n()) |> filter(n>1) |> arrange(desc(n))
+# remove duplicates
+spells |> drop_na(Start,Finish) |> distinct(name,club,Finish,.keep_all = TRUE) -> spells
+spell <- spells |> select(club,Start,Finish) |> arrange(Finish)
+spell |> filter(Finish-Start>0) -> spell
 ```
+
+
+The raw data from transfrmarkt is then cleaned and processed to create a raw dataset of manager spells. The dataset contains the following columns:
+
+- `name`: The name of the person in charge
+- `club`: The club the manager was in charge of
+- `position`: The position of the person in charge
+- `Start`: The start date of the spell
+- `Finish`: The end date of the spell
+- `days_in_charge`: The number of days the manager was in charge of the club
+- `season_start`: The start of the season the spell ended
+
+```{r}
+#| label: fig-annual-spell-count
+#| fig-cap: "Annual count of manager spell ending"
+library(ggplot2)
+library(dplyr)
+# create plot of annual count of spells using a count of finishes per season assume season starts in August
+spell |> mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |> 
+  count(season_start) |> 
+  ggplot(aes(x = season_start, y = n)) +
+  geom_col(width = 0.5) +
+  labs(title = "Annual count of spell ending", x = "Season", y = "Number of spells") +
+  theme_minimal() -> spell_count
+plotly::ggplotly(spell_count)
+```
+
+```{r}
+```
+
+
+```{bash}
+#!/bin/bash
+
+# Define a function to make an HTTP request to the API and parse the response
+function api_call() {
+  local club_name="$1"
+  local year_end_of_season="$2"
+  local response=$(curl -s -H "Content-Type: application/json" \
+    --data '{"model": "llama2", "prompt": "Which country is the club 
+${club_name} from? What is its division level based on the year 
+${year_end_of_season}?"}' http://localhost:11434/api/generate)
+  echo "Processing club ${club_name} (${year_end_of_season})"
+  echo "${response}" >> responses.csv
+}
+
+# Read the input CSV file with clubs and end of season dates using csvparse
+input_file="input.csv"
+output_file="output.csv"
+IFS=$'\n'
+mapfile -t clubs < <(csplit ${input_file} '{printf "%s\n" %${0}}}')
+unset IFS
+declare -a clubs_array=(${clubs[@]})
+declare -a years_array=()
+for i in $(seq 0 ${#clubs_array[*]}-1); do
+  IFS=',' read -r club_name year < "${input_file}" || continue
+  years_array+=("${year}")
+done
+unset IFS
+
+# Loop over the clubs and call the API for each one with its respective end 
+of season year
+for ((i = 0; i < ${#clubs_array[@]}; i++)); do
+  local club_name="${clubs_array[$i]}"
+  local year="${years_array[$i]}"
+  api_call "${club_name}" "${year}"
+done
+
+echo "Done processing all clubs. Total responses processed: $(wc -l < 
+responses.csv)"
+```
+
 
 ```{python}
 import pandas as pd
@@ -172,14 +252,6 @@ import time
 from transformers import pipeline
 
 generator = pipeline("text-generation")
-# Load model directly
-# from transformers import AutoTokenizer, AutoModelForCausalLM
-# 
-# tokenizer = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
-# model = AutoModelForCausalLM.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")  
-# Use a pipeline as a high-level helper
-#from transformers import pipeline
-#pipe = pipeline("text-generation", model="mistralai/Mixtral-8x7B-Instruct-v0.1")
 
 # Load the unique club names from the CSV file
 spells1 = pd.read_csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
