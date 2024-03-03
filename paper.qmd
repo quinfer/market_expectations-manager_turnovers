@@ -126,7 +126,7 @@ In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, 
 
 # Data
 
-## Manager spell profiles
+## Manager spell
 
 We build a hand-craft database on the complete manager turnover profiles of all professional football managers across 11 European leagues for 23 playing seasons up to 2023-2024. We use three sources 1. [league of managers association](https://leaguemanagers.com) a body representing professional managers in English football. 2. [Soccer base](https://www.soccerbase.com) a betting website 3. [Transfermkt website](https://www.transfermarkt.co.uk) a large website which records manager, player and team profiles as well as a large array of analytics of the valuation of playing staff. The raw data is gathered using a series of web scrapping algorithms. Our primary source of information is Transfermkt, but we use other sources to validate these manager spells.
 
@@ -167,23 +167,92 @@ spells |>
   mutate(days_in_charge = as.numeric(Finish - Start)) ->spells
 spells |> distinct(name,club,Finish) |> nrow()
 # find duplicates for name,club,Finish
-spells |> drop_na(Start,Finish) |> group_by(name,club,Finish) |> summarise(n=n()) |> filter(n>1) |> arrange(desc(n))
+#spells |> drop_na(Start,Finish) |> group_by(name,club,Finish) |> summarise(n=n()) |> filter(n>1) |> arrange(desc(n))
 # remove duplicates
-spells |> drop_na(Start,Finish) |> distinct(name,club,Finish,.keep_all = TRUE) -> spells
-spell <- spells |> select(club,Start,Finish) |> arrange(Finish)
-spell |> filter(Finish-Start>0) -> spell
-```
+spells |> drop_na(Start,Finish) |> distinct(name,club,Finish,.keep_all = TRUE) |> filter(Finish-Start>0) -> spells
 
+```
 
 The raw data from transfrmarkt is then cleaned and processed to create a raw dataset of manager spells. The dataset contains the following columns:
 
-- `name`: The name of the person in charge
-- `club`: The club the manager was in charge of
-- `position`: The position of the person in charge
-- `Start`: The start date of the spell
-- `Finish`: The end date of the spell
-- `days_in_charge`: The number of days the manager was in charge of the club
-- `season_start`: The start of the season the spell ended
+-   `name`: The name of of staff member
+-   `club`: The club of the staff member
+-   `position`: The position of the staff member
+-   `appointed`: The start date of the spell
+-   `contract_expiry`: The end date of the spell
+-   `days_in_charge`: The number of days the manager was in charge of the club
+-   `wins`: Number of wins for spell
+-   `draws`: Number of draws for spell
+-   `losses`: Number of losses for spell
+-   `players_used`: Number of players used in the spell
+-   `avg_goals_for`: Average goals scored per game
+-   `avg_goals_against`: Average goals conceded per game
+-    `ppm`: Points per match
+
+
+```{r}
+#|label: fig-managertype
+#|fig-cap: "Word cloud of manager types"
+
+# Use the wordcloud package to create a word cloud of manager types using position column
+library(wordcloud)
+library(tm)
+library(SnowballC)
+terms_to_remove <- c("1.FC Köln II","Al-Ahli (UAE)","Gimnasia (J)","San Martín (T)",
+  "San Martín (SJ)","Racing (Cba)","Juv. Unida (G)","1.FC Köln U19",
+  "1.FC Köln U17","1.FC Köln Yth.",
+  "1.FC Köln U16"," II","1.FC Köln","Bor. M'gladbach",
+  "Hertha BSC","F. Düsseldorf",
+  "Velez Mostar","SSV Reutlingen","FV Ravensburg",
+  "Fenerbahce","FC Teningen","FV Nimburg","Heart of Midl.",
+  "Vetra","Sp.Genzano (PZ)","Honvéd FC","Olympiacos","Honvéd SE","Hungary",
+  "ADO Den Haag(A)","Dordrecht'90","Haarlem","AZ Alkmaar","Roda JC","AZ '67",
+  "Sparta R.","De Treffers","NEC Nijmegen","FC Oss","VV Gemert","PSV U21")
+paste0("(",paste(terms_to_remove,collapse="|"),")")  -> remove_terms
+spells |>
+  str_remove(position,terms_to_remove[1]) %>%
+  {table(.$position)}
+
+spells |> mutate(
+    staff_position = trimws(tolower(position)),
+    staff_position = ifelse(staff_position=="manager","manager",staff_position),
+    staff_position = ifelse(staff_position=="assistant manager","assistant manager",staff_position),
+    staff_position = ifelse(staff_position=="caretaker manager","caretaker manager",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"player-coach"),"player-coach",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"director of football"),"director of football",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"technical director"),"technical director",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"director of professional football"),"director of professional football",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"sporting director"),"sporting director",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"academy manager"),"academy manager",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"advisor"),"advisor",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position),
+    staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position)) -> spells
+
+table(spells$staff_position[!is.na(spells$staff_position)]) |> sort(decreasing = TRUE)
+```
+
+```{r}
+
+VCorpus <- Corpus(VectorSource(spells$position[!is.na(spells$position)]))
+terms_to_remove <-c('Al-Ahli (UAE)','')
+# Copy text to clipboard on Linux
+text <- unique(spells$position[!is.na(spells$position)])
+write(text, "| xclip -selection clipboard")
+
+table(spells$position[!is.na(spells$position)])
+VCorpus <- VCorpus |>
+  tm_map(content_transformer(tolower)) |> 
+  tm_map(removePunctuation) |> 
+  tm_map(removeNumbers) |> 
+  tm_map(removeWords, stopwords("en")) |> 
+  tm_map(stripWhitespace) |> 
+  TermDocumentMatrix() |> 
+  as.matrix() |> 
+  colSums() |> 
+  sort(decreasing = TRUE) 
+wordcloud(words = names(VCorpus), freq = VCorpus, min.freq = 1, scale = c(3, 0.5), colors = brewer.pal(8, "Dark2"))
+```
+
 
 ```{r}
 #| label: fig-annual-spell-count
@@ -202,7 +271,6 @@ plotly::ggplotly(spell_count)
 
 ```{r}
 ```
-
 
 ```{bash}
 #!/bin/bash
@@ -244,7 +312,6 @@ done
 echo "Done processing all clubs. Total responses processed: $(wc -l < 
 responses.csv)"
 ```
-
 
 ```{python}
 import pandas as pd
@@ -293,7 +360,6 @@ results_df.to_csv(csv_file_path, index=False)
 print(f"Results have been saved to {csv_file_path}")
 
 ```
-
 
 # Methodology
 

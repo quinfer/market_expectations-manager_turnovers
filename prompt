@@ -1,0 +1,188 @@
+"""
+Using the supply list of raw team staff positions, provide a list of terms to remove so that the list of is only describes typical staff positions of a professional football/soccer team.
+For example, "Al-Ahli (UAE)Assistant Manager" would need to remove the term  "Al-Ahli (UAE)" to become a typical staff positions of a professional football/soccer team, so they should be removed from the list.
+Here is the raw list of staff positions:
+Manager
+Match Analyst
+Caretaker Manager
+Assistant Manager
+Player-Coach
+Technical Director
+Director of Professional Football
+Sporting Director
+Academy manager
+Advisor
+Director of Football
+Counselor of administrative board
+Physiotherapist
+Youth Coach
+Academy Manager
+Fitness Coach
+Scout
+Head of Academy Coaching
+Goalkeeping Coach
+Chief Analyst
+Video Analyst
+Club representative
+Chief Scout
+Chief instructor
+Coordinator of talent management
+Gaming operation
+Advisor of management
+Al-Ahli (UAE)Manager
+President
+Technical Coach
+Opponent Analyst
+Conditioning Coach
+Development Coach
+Team official
+Team Manager
+Individual Coach
+Board Member
+Team coordinator
+Director of Development
+Sports coordinator
+Global Sports Director
+Al-Ahli (UAE)Sporting Director
+Al-Ahli (UAE)Assistant Manager
+Honorary President
+Vice-President
+Executive Assistant
+Loan Player Manager
+Academy Staff
+Chairman
+Technical Assistant
+Trainer scout
+Translator
+Head of Football Operations
+Youth Chief Scout
+Head of Marketing
+Chief Executive Officer
+Secretary
+Staff of the office
+Director of Sport
+Strategic Advisor
+Member of the Supervisory Board
+Member of administrative board
+Managing Director Professional Football
+Forward Coach
+Director
+Youth Scout
+Youth Scouting Co-ordinator
+Developer international relations
+Head of Scouting
+Commercial Director
+Squad leader
+Sports Scientist
+Chairman of the Supervisory Board 
+Owner
+Head of Soccer School
+Mental Coach
+Director of youth department
+Head of Logistics
+Kit Manager
+Head of Youth Scouting
+Managing Director Sport and Communications
+Medical Director Physiotherapy
+Association sports teacher
+Coordinator first team football
+Director of Professional Football and Scout
+Head of methodology
+Coach trainee
+Managing Director Sport
+Athletic Coach
+Investor
+Marketing/Management
+Gimnasia (J)Manager
+San Martín (T)Manager
+Racing (Cba)Manager
+San Martín (SJ)Manager
+Sporting CEO
+Juv. Unida (G)Manager
+Goalkeeping Co-ordinator
+Umpire
+Executive assistant of the manager
+Head of International Relations and Scouting
+Media Director
+Base camp coordinator
+Board member
+Head of first team football
+Vice-Chairman
+Chief Operating Officer
+Member of the shareholders' committee
+Academy Goalkeeping coordinator
+Shareholder
+Deputy chairman of the board
+Treasurer
+1.FC Köln IIIndividual Coach
+1.FC Köln U19Individual Coach
+1.FC Köln U17Individual Coach
+1.FC Köln Yth.Individual Coach
+ IIConditioning Coach
+1.FC KölnAssistant Manager
+1.FC Köln U19Conditioning Coach
+1.FC Köln U17Conditioning Coach
+1.FC Köln IIConditioning Coach
+ Yth.Conditioning Coach
+1.FC KölnConditioning Coach
+Bor. M'gladbachTechnical Assistant
+Rehab Coach
+Head of Administration
+Director of preformation
+Chairman of the Board
+Hertha BSCGoalkeeping Coach
+F. DüsseldorfGoalkeeping Coach
+Velez MostarManager
+Career breakManager
+SSV ReutlingenManager
+FV RavensburgManager
+SC PfullendorfManager
+FenerbahceAssistant Manager
+FC TeningenPlayer-Coach
+FV NimburgPlayer-Coach
+Supporter Liaison Officer 
+Branch manager
+Coordination coach
+Heart of Midl.Assistant Manager
+FBK KaunasManager
+VetraManager
+Kaderplaner
+Club Doctor
+Deputy Managing Director
+Al-Ahli (UAE)Caretaker Manager
+Head of Education
+Team Organiser
+Sp.Genzano (PZ)Manager
+Al-Ahli (UAE)Strategic Advisor
+Chairman of board of directors
+Director of stadium company
+Educational Assistant
+Coordinator marketing management
+Masseur
+Performance Manager
+Honvéd FCDirector of Football
+OlympiacosManager
+Honvéd SEManager
+HungaryManager
+Honvéd SEVice-Chairman
+Press Officer
+ADO Den Haag(A)Assistant Manager
+Dordrecht'90Assistant Manager
+HaarlemManager
+AZ AlkmaarManager
+Roda JCManager
+AZ '67Assistant Manager
+Sparta R.Assistant Manager
+Marketing Staff 
+Goal keeper coach
+
+De TreffersManager
+NEC NijmegenManager
+FC OssManager
+NEC NijmegenAssistant Manager
+VV GemertManager
+PSV U21Manager
+Head of Operations and Infrastructure
+Sponsoring
+ADO Den Haag(A)Manager
+"""
