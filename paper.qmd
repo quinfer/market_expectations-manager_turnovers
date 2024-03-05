@@ -165,7 +165,6 @@ spells |>
   mutate(Start = as.Date(Start),
          Finish = as.Date(Finish)) |>
   mutate(days_in_charge = as.numeric(Finish - Start)) ->spells
-spells |> distinct(name,club,Finish) |> nrow()
 # find duplicates for name,club,Finish
 #spells |> drop_na(Start,Finish) |> group_by(name,club,Finish) |> summarise(n=n()) |> filter(n>1) |> arrange(desc(n))
 # remove duplicates
@@ -191,13 +190,13 @@ The raw data from transfrmarkt is then cleaned and processed to create a raw dat
 
 
 ```{r}
-#|label: fig-managertype
-#|fig-cap: "Word cloud of manager types"
 
-# Use the wordcloud package to create a word cloud of manager types using position column
-#library(wordcloud)
-#library(tm)
-#library(SnowballC)
+```
+
+```{r}
+#|label: tbl-managertype
+#| tbl-cap: "Manager types"
+library(kableExtra)
 terms_to_remove <- c("1.FC Köln II","Al-Ahli (UAE)","Gimnasia (J)","San Martín (T)",
   "San Martín (SJ)","Racing (Cba)","Juv. Unida (G)","1.FC Köln U19",
   "1.FC Köln U17","1.FC Köln Yth.",
@@ -208,16 +207,6 @@ terms_to_remove <- c("1.FC Köln II","Al-Ahli (UAE)","Gimnasia (J)","San Martín
   "Vetra","Sp.Genzano (PZ)","Honvéd FC","Olympiacos","Honvéd SE","Hungary",
   "ADO Den Haag(A)","Dordrecht'90","Haarlem","AZ Alkmaar","Roda JC","AZ '67",
   "Sparta R.","De Treffers","NEC Nijmegen","FC Oss","VV Gemert","PSV U21")
-#paste0("(",paste(terms_to_remove,collapse="|"),")")  -> remove_terms
-# spells %>%
-#   mutate(position = str_remove_all(position, paste0("(", paste(terms_to_remove, collapse = "|"), ")"))) %>%
-#   ungroup() %>%
-#   {table(.$position)} %>% sort(decreasing = TRUE) %>% head(20)
-```
-
-```{r}
-library(wordcloud)
-library(kableExtra)
 spells %>%
   mutate(position = str_remove_all(position, paste0("(", paste(terms_to_remove, collapse = "|"), ")"))) -> spells
 spells |> mutate(
@@ -242,13 +231,10 @@ spells |> mutate(
   # order the data frame by the frequency
   arrange(desc(n)) |>
   head(20) |>
-  kbl() |>
+  kable(col.names=c("Staff Role","Number")) |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F)
 ```
 
-```{r}
-
-```
 
 
 ```{r}
@@ -257,7 +243,7 @@ spells |> mutate(
 library(ggplot2)
 library(dplyr)
 # create plot of annual count of spells using a count of finishes per season assume season starts in August
-spell |> mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |> 
+spells |> mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |> 
   count(season_start) |> 
   ggplot(aes(x = season_start, y = n)) +
   geom_col(width = 0.5) +
@@ -269,46 +255,7 @@ plotly::ggplotly(spell_count)
 ```{r}
 ```
 
-```{bash}
-#!/bin/bash
 
-# Define a function to make an HTTP request to the API and parse the response
-function api_call() {
-  local club_name="$1"
-  local year_end_of_season="$2"
-  local response=$(curl -s -H "Content-Type: application/json" \
-    --data '{"model": "llama2", "prompt": "Which country is the club 
-${club_name} from? What is its division level based on the year 
-${year_end_of_season}?"}' http://localhost:11434/api/generate)
-  echo "Processing club ${club_name} (${year_end_of_season})"
-  echo "${response}" >> responses.csv
-}
-
-# Read the input CSV file with clubs and end of season dates using csvparse
-input_file="input.csv"
-output_file="output.csv"
-IFS=$'\n'
-mapfile -t clubs < <(csplit ${input_file} '{printf "%s\n" %${0}}}')
-unset IFS
-declare -a clubs_array=(${clubs[@]})
-declare -a years_array=()
-for i in $(seq 0 ${#clubs_array[*]}-1); do
-  IFS=',' read -r club_name year < "${input_file}" || continue
-  years_array+=("${year}")
-done
-unset IFS
-
-# Loop over the clubs and call the API for each one with its respective end 
-of season year
-for ((i = 0; i < ${#clubs_array[@]}; i++)); do
-  local club_name="${clubs_array[$i]}"
-  local year="${years_array[$i]}"
-  api_call "${club_name}" "${year}"
-done
-
-echo "Done processing all clubs. Total responses processed: $(wc -l < 
-responses.csv)"
-```
 
 ```{python}
 import pandas as pd
