@@ -20,7 +20,7 @@ library(brms)
 library(tidyverse)
 library(rstan)
 library (tidybayes)
-reticulate::use_condaenv("pymc")
+#reticulate::use_condaenv("pymc")
 
 logit_baseline<-readRDS("models/logit_poach_base.rds")
 hazard_cty<-readRDS("models/grp_lvl_poach_cty.rds")
@@ -222,7 +222,9 @@ spells |> mutate(
     staff_position = ifelse(str_detect(staff_position,"academy manager"),"academy manager",staff_position),
     staff_position = ifelse(str_detect(staff_position,"advisor"),"advisor",staff_position),
     staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position)) %>%
+    staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position)) -> spells
+
+spells %>%
   {table(.$staff_position[!is.na(.$staff_position)])} |> sort(decreasing = TRUE) |> 
   # make the frequency table into a data frame
   as.data.frame() |>
@@ -243,16 +245,42 @@ spells |> mutate(
 library(ggplot2)
 library(dplyr)
 # create plot of annual count of spells using a count of finishes per season assume season starts in August
-spells |> mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |> 
-  count(season_start) |> 
+spells |> 
+  mutate(youth_team = ifelse(str_detect(club, "[A-Z][0-9]{2}|Yth."), "Yes", "No")) -> spells
+
+# Create a list of the worlds countries in lowercase
+countries <- c("albania", "andorra", "austria", "belarus", "belgium", "bosnia-herzegovina", "bulgaria", "croatia", "cyprus", "czech-republic", "denmark", "estonia", "faroe-islands", "finland", "france", "germany", "gibraltar", "greece", "hungary", "iceland", "ireland", "italy", "kosovo", "latvia", "liechtenstein", "lithuania", "luxembourg", "malta", "moldova", "montenegro", "netherlands", "north-macedonia", "northern-ireland", "norway", "poland", "portugal", "romania", "russia", "san-marino", "scotland", "serbia", "slovakia", "slovenia", "spain", "sweden", "switzerland", "turkey", "ukraine", "wales", "england")
+
+# find the name of a country in the club name
+spells |> 
+  mutate(country = str_extract(club, "([A-Z][a-z]+)")) |> 
+  filter(!is.na(country)) |> 
+  count(country) |> 
+  arrange(desc(n)) |> 
+  head(20) |> 
+  kable(col.names=c("Country","Number")) |> 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F)
+
+# plot the annual count of spells using a count of finishes per season assume season starts in August and condition on youth_team
+spells |> 
+  filter(staff_position=="manager") |> 
+  mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |>
+  group_by(season_start,youth_team) |>
+  count(season_start) 
+
+
+|> 
   ggplot(aes(x = season_start, y = n)) +
   geom_col(width = 0.5) +
-  labs(title = "Annual count of spell ending", x = "Season", y = "Number of spells") +
+  labs(title = "", x = "Season", y = "Number of spells") +
   theme_minimal() -> spell_count
+
+
 plotly::ggplotly(spell_count)
 ```
 
 ```{r}
+
 ```
 
 
