@@ -15,3 +15,35 @@ OR
 read_csv(df1) |>
  bind_rows(read_csv(df2))-> dat
 ```
+
+## LLM work
+The LLM work uses llama2 populate the raw manager spells data with extra descriptive variables. Using ollama.ai
+and the bash script `loop_w_counter.sh` to run the llama2 with the following prompt on each line in the input.csv file.
+
+```{bash}
+local prompt="""
+  You are to search for information about ${club_name} on ${end_of_spell}. 
+  Then answer the following questions filling in the blanks with the correct information.
+  Only provide one word answers.
+  Rate your confidence for each answer answer from 1 to 10.
+  Question 1: In which country does ${club_name} play?
+  Answer1: _________ confidence: _________
+  Question 2: On ${end_of_spell}, what division was ${club_name} in? 
+  Answer2: _________ confidence: _________
+  Question 3: What is the full name of ${club_name}?
+  Answer3: _________ confidence: _________
+  """
+```
+
+
+## post processing
+We combine post processing into three steps in the bash script `postprocessing_steps.sh`. The first steps tieds the csv files using an R script.  The second step uses `adjust_text.py` cleans up some of the API response text.  Finally, the third step uses the `extract_ansers.py` script to create a final csv file with the cleaned data which includes: 
+- club_name
+- end_of_spell
+- country
+- division
+- full_name
+- confidence_country
+- confidence_division
+- confidence_full_name
+where the confidence variable is the LLM assignment of confidence in the answer.
