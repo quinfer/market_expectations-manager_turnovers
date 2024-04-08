@@ -1,6 +1,6 @@
 library(dplyr)
 library(purrr)
-#spells <- read.csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
+library(stringr)
 spells <- read.csv("raw_data/manager_spells_from_manager_urls.csv")
 
 # Define season_to_date() function here
@@ -36,7 +36,6 @@ spells |>
 #spells |> drop_na(Start,Finish) |> group_by(name,club,Finish) |> summarise(n=n()) |> filter(n>1) |> arrange(desc(n))
 # remove duplicates
 spells |> drop_na(Start,Finish) |> distinct(name,club,Finish,.keep_all = TRUE) |> filter(Finish-Start>0) -> spells
-library(kableExtra)
 terms_to_remove <- c("1.FC Köln II","Al-Ahli (UAE)","Gimnasia (J)","San Martín (T)",
                      "San Martín (SJ)","Racing (Cba)","Juv. Unida (G)","1.FC Köln U19",
                      "1.FC Köln U17","1.FC Köln Yth.",
@@ -64,6 +63,12 @@ spells |> mutate(
   staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position),
   staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position))-> spells
 
+#spells |> distinct(club,Finish) |> select(club,Finish) |> rename("club_name"="club","end_of_spell"="Finish") |> write_csv("LLM-work/input.csv")
 
-spells |> distinct(club,Finish) |> rename("club_name"="club","end_of_spell"="Finish") |> head(10) |> write_csv("LLM-work/test_input.csv")
-spells |> distinct(club,Finish) |> select(club,Finish) |> rename("club_name"="club","end_of_spell"="Finish") |> write_csv("LLM-work/input.csv")
+llm<-read.csv(file = "LLM-work/outputadj_parsed.csv")
+spells |>
+  mutate(mergevar=as.character(Finish)) |>
+  left_join(llm, by=c("club"="club_name","mergevar"="end_of_spell")) |>
+  select(-mergevar&-contract_expiry.x) |> 
+  rename("contract_expiry"="contract_expiry.y") |>
+  saveRDS("raw_data/manager_spells_from_manager_urls.rds")
