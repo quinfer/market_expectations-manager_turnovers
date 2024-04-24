@@ -222,8 +222,29 @@ plotly::ggplotly(spell_count)
 
 
 ```{r}
-library(clipr)
-unique(spells$Country) |> write_clip()
+# Install and load the 'countrycode' package if not already installed
+if (!requireNamespace("countrycode", quietly = TRUE)) {
+  install.packages("countrycode")
+}
+library(countries)
+
+# Get the list of country names
+countries <- list_countries()
+
+# Function to find the country in a text string
+find_country_in_text <- function(text, countries) {
+  for (country in countries) {
+    if (grepl(tolower(country), tolower(text))) {
+      return(country)
+    }
+  }
+  return('NA')
+}
+
+# Assuming your data is in a data frame named 'df' and the text strings are in a column named 'text'
+spells$matched_country <- sapply(spells$Country, function(x) find_country_in_text(x, countries))
+# sanity check
+table(spells$matched_country)
 ```
 
 ```{r}
@@ -262,7 +283,15 @@ unique(categories) |> write_clip()
 
 ```{r}
 library(countries)
-list_countries() |> length()
+# write to to find partial matches within each string in a list of strings
+countries <- spells$Country
+countries <- tolower(countries)
+countries <- gsub(" - | \\. ", ".", countries)
+countries <- gsub("not applicable|none|unknown|not found|not available|n/a", NA, countries)
+countries <- gsub("i am not|i cannot|i don't|i am just an ai|i'm just an ai", "LLM cannot find answer", countries)
+countries <- countries[!is.na(countries)]
+country_list <-tolower(list_countries())
+sum(countries %in% tolower(list_countries()))
 ```
 
 
