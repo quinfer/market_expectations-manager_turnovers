@@ -1,0 +1,37 @@
+{
+    "response": {
+        "club_name": {
+            "name": "<club_name>",
+            "value": ${club_name},
+            "type": "string"
+        },
+        "end_of_spell": {
+            "name": "<end_of_spell>",
+            "value": ${end_of_spell},
+            "type": "string"
+        }
+    },
+    "results": {
+        "spell_type": {
+            "value": "club",
+            "type": "string"
+        },
+        "country": {
+            "value": "France",
+            "type": "string"
+        },
+        "tier": {
+            "value": "1st",
+            "type": "string"
+        },
+        "country_probability": {
+            "value": "0.8",
+            "type": "string"
+        },
+        "tier_probability": {
+            "value": "0.9",
+            "type": "string"
+        }
+    }
+}
+

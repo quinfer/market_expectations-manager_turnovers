@@ -24,7 +24,7 @@ api_call() {
   """
   
   # Call the local LLM model
-  echo "$prompt" | ollama run llama2 > "$temp_output"
+  echo "$prompt" | ollama run llama3 > "$temp_output"
   local response=$(cat "$temp_output")
   
   # Increment counter
