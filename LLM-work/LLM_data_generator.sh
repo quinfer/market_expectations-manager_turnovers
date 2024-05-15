@@ -5,7 +5,12 @@ counter=0
 
 # Read the prompt template from prompt_template.txt
 prompt_template=$(cat prompt_template.txt)
-
+# Get the total number of lines in the input file (excluding the header)
+if [[ -f "${1:-/dev/stdin}" ]]; then
+    total_lines=$(wc -l < "${1:-/dev/stdin}")
+else
+    total_lines=0
+fi
 # Function to make a call to the local LLM and parse the response
 api_call() {
     local club_name="$1"
