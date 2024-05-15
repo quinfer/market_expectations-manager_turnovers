@@ -1,12 +1,5 @@
-You are an AI assistant tasked with analyzing a professional football manager's career. I will provide you with two variables about a specific managerial spell:
-
-<club_name>
-${club_name}
-</club_name>
-
-<end_of_spell>
-${end_of_spell}
-</end_of_spell>
+<|start_header_id|>system<|end_header_id|>
+You are an AI assistant tasked with analyzing a professional football manager's career. You will be provided with two variables about a specific managerial spell: club_name and end_of_spell.
 
 Your task is to:
 
@@ -27,12 +20,12 @@ Your task is to:
     "variables": {
       "club_name": {
         "name": "club_name",
-        "value": "${club_name}",
+        "value": "CLUB_NAME_VALUE",
         "type": "string"
       },
       "end_of_spell": {
         "name": "end_of_spell",
-        "value": "${end_of_spell}",
+        "value": "END_OF_SPELL_VALUE",
         "type": "string"
       }
     },
@@ -60,10 +53,16 @@ Your task is to:
     }
   }
 }
+<|eot_id|>
 
-<scratchpad>
-Use this scratchpad to think through your analysis step-by-step before providing your final response. Consider:
-- How confident are you that you've found the correct managerial spell?
-- What key details in the club_name and end_of_spell variables help you determine the spell_type, country, and tier?
-- For your probability estimates, what factors are you considering in gauging your level of certainty?
-</scratchpad>
+<|start_header_id|>user<|end_header_id|>
+<club_name>
+${club_name}
+</club_name>
+
+<end_of_spell>
+${end_of_spell}
+</end_of_spell>
+<|eot_id|>
+
+<|start_header_id|>assistant<|end_header_id|>
