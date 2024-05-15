@@ -5,7 +5,14 @@ counter=0
 
 # Read the prompt template from prompt_template.txt
 prompt_template=$(cat prompt_template.txt)
-   
+
+# Get the total number of lines in the input file (excluding the header)
+if [[ -f "${1:-/dev/stdin}" ]]; then
+    total_lines=$(wc -l < "${1:-/dev/stdin}")
+else
+    total_lines=0
+fi
+
 # Function to make a call to the local LLM and parse the response
 api_call() {
     local club_name="$1"
@@ -27,6 +34,11 @@ api_call() {
     echo "$response" >> master_output.jsonl
 }
 
+# Clear the master output files
+> master_output.jsonl
+> master_output.json
+> master_output.csv
+
 # Read input from a file or stdin
 while IFS= read -r line || [[ -n "$line" ]]; do
     # Skip the first line (header)
@@ -41,9 +53,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "${1:-/dev/stdin}"
 
 # Create a valid JSON array from the JSONL file
-echo "[" > master_output.json
-sed "$!s/$/,/" master_output.jsonl >> master_output.json
-echo "]" >> master_output.json
+#echo "[" > master_output.json
+#sed "$!s/$/,/" master_output.jsonl >> master_output.json
+#echo "]" >> master_output.json
+# Create a valid JSON array from the JSONL file
+jq --slurp '.' master_output.jsonl > master_output.json
 
 # Convert JSON to CSV using jq
 jq -r '["club_name", "end_of_spell", "country", "division", "full_name", "country_confidence", "division_confidence", "full_name_confidence"], (.[] | [.club_name, .end_of_spell, .country, .division, .full_name, .country_confidence, .division_confidence, .full_name_confidence]) | @csv' master_output.json > master_output.csv
