@@ -10,28 +10,28 @@ prompt_template=$(cat prompt_template.txt)
 api_call() {
     local club_name="$1"
     local end_of_spell="$2"
-    local temp_output="temp_response.txt"  # Temporary file to store LLM response
+    local temp_output="temp_response.txt"
 
     # Replace placeholders in the prompt template with local variables
-    local prompt="${prompt_template//${club_name}/$club_name}"
-    prompt="${prompt//${end_of_spell}/$end_of_spell}"
+    local prompt=$(echo "$prompt_template" | sed "s/<club_name>/${club_name}/g; s/<end_of_spell>/${end_of_spell}/g")
 
     # Call the local LLM model
     echo "$prompt" | ollama run llama3 > "$temp_output"
-
     local response=$(cat "$temp_output")
 
     # Increment counter
     ((counter++))
-
     echo "Processing club ${club_name} (${end_of_spell}) - ${counter} of ${total_lines} processed"
-    ## echo "${prompt}"	
+
     # Append the JSON response to the master output file
     echo "$response" >> master_output.jsonl
 }
 
 # Read input from a file or stdin
-while IFS= read -r line || [ -n "$line" ]; do
+while IFS= read -r line || [[ -n "$line" ]]; do
+    # Skip the first line (header)
+    [[ "$line" =~ ^club_name,end_of_spell$ ]] && continue
+
     # Parse the input line to extract club_name and end_of_spell
     club_name=$(echo "$line" | cut -d ',' -f 1)
     end_of_spell=$(echo "$line" | cut -d ',' -f 2)
