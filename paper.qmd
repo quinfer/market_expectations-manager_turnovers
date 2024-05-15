@@ -134,42 +134,7 @@ We build a hand-craft database on the complete manager turnover profiles of all 
 library(dplyr)
 library(purrr)
 #spells <- read.csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
-spells <- read.csv("raw_data/manager_spells_from_manager_urls.csv")
-
-# Define season_to_date() function here
-season_to_date <- function(season) {
-  if (is.na(season) | length(gsub("/", "", season)) == 0) {
-    return(NA_real_)
-  }
-
-  parts <- strsplit(season, "/")[[1]]
-  month <- as.numeric(parts[2])
-   if (month < 8) {
-     year <- paste0("20", substr(parts[1], 1, 2))
-   } else {
-     year <- paste0("19", substr(parts[1], 1, 2))
-   }
-
-  date_str <- paste0("01/08/", year)
-  as.Date(paste(date_str, collapse = "/"), "%d/%m/%Y")
-}
-
-data_helper <- spells |>
-  mutate(row_id=row_number()) |>
-  filter(is.na(Finish)&contract_expiry!="-") |>
-  select(contract_expiry, Finish,row_id)
-data_helper$Finish<-as.Date(map_dbl(data_helper$contract_expiry, season_to_date))
-spells |>
-  mutate(row_id=row_number()) |>
-  left_join(data_helper |> select(-Finish), by="row_id") |>
-  mutate(Start = as.Date(Start),
-         Finish = as.Date(Finish)) |>
-  mutate(days_in_charge = as.numeric(Finish - Start)) ->spells
-# find duplicates for name,club,Finish
-#spells |> drop_na(Start,Finish) |> group_by(name,club,Finish) |> summarise(n=n()) |> filter(n>1) |> arrange(desc(n))
-# remove duplicates
-spells |> drop_na(Start,Finish) |> distinct(name,club,Finish,.keep_all = TRUE) |> filter(Finish-Start>0) -> spells
-
+spells <- readRDS("raw_data/manager_spells_from_manager_urls.rds")
 ```
 
 The raw data from transfrmarkt is then cleaned and processed to create a raw dataset of manager spells. The dataset contains the following columns:
@@ -197,33 +162,6 @@ The raw data from transfrmarkt is then cleaned and processed to create a raw dat
 #|label: tbl-managertype
 #| tbl-cap: "Manager types"
 library(kableExtra)
-terms_to_remove <- c("1.FC Köln II","Al-Ahli (UAE)","Gimnasia (J)","San Martín (T)",
-  "San Martín (SJ)","Racing (Cba)","Juv. Unida (G)","1.FC Köln U19",
-  "1.FC Köln U17","1.FC Köln Yth.",
-  "1.FC Köln U16"," II","1.FC Köln","Bor. M'gladbach",
-  "Hertha BSC","F. Düsseldorf",
-  "Velez Mostar","SSV Reutlingen","FV Ravensburg",
-  "Fenerbahce","FC Teningen","FV Nimburg","Heart of Midl.",
-  "Vetra","Sp.Genzano (PZ)","Honvéd FC","Olympiacos","Honvéd SE","Hungary",
-  "ADO Den Haag(A)","Dordrecht'90","Haarlem","AZ Alkmaar","Roda JC","AZ '67",
-  "Sparta R.","De Treffers","NEC Nijmegen","FC Oss","VV Gemert","PSV U21")
-spells %>%
-  mutate(position = str_remove_all(position, paste0("(", paste(terms_to_remove, collapse = "|"), ")"))) -> spells
-spells |> mutate(
-    staff_position = trimws(tolower(position)),
-    staff_position = ifelse(staff_position=="manager","manager",staff_position),
-    staff_position = ifelse(staff_position=="assistant manager","assistant manager",staff_position),
-    staff_position = ifelse(staff_position=="caretaker manager","caretaker manager",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"player-coach"),"player-coach",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"director of football"),"director of football",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"technical director"),"technical director",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"director of professional football"),"director of professional football",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"sporting director"),"sporting director",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"academy manager"),"academy manager",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"advisor"),"advisor",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position),
-    staff_position = ifelse(str_detect(staff_position,"head of football operations"),"head of football operations",staff_position)) -> spells
-
 spells %>%
   {table(.$staff_position[!is.na(.$staff_position)])} |> sort(decreasing = TRUE) |> 
   # make the frequency table into a data frame
@@ -246,36 +184,32 @@ library(ggplot2)
 library(dplyr)
 # create plot of annual count of spells using a count of finishes per season assume season starts in August
 spells |> 
-  mutate(youth_team = ifelse(str_detect(club, "[A-Z][0-9]{2}|Yth."), "Yes", "No")) -> spells
+  mutate(youth_team = ifelse(str_detect(club, "[A-Z][0-9]{2}|Yth.|Youth"), "Yes", "No")) -> spells
 
-# Create a list of the worlds countries in lowercase
-countries <- c("albania", "andorra", "austria", "belarus", "belgium", "bosnia-herzegovina", "bulgaria", "croatia", "cyprus", "czech-republic", "denmark", "estonia", "faroe-islands", "finland", "france", "germany", "gibraltar", "greece", "hungary", "iceland", "ireland", "italy", "kosovo", "latvia", "liechtenstein", "lithuania", "luxembourg", "malta", "moldova", "montenegro", "netherlands", "north-macedonia", "northern-ireland", "norway", "poland", "portugal", "romania", "russia", "san-marino", "scotland", "serbia", "slovakia", "slovenia", "spain", "sweden", "switzerland", "turkey", "ukraine", "wales", "england")
-
-# find the name of a country in the club name
-spells |> 
-  mutate(country = str_extract(club, "([A-Z][a-z]+)")) |> 
-  filter(!is.na(country)) |> 
-  count(country) |> 
-  arrange(desc(n)) |> 
-  head(20) |> 
-  kable(col.names=c("Country","Number")) |> 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F)
+# create a list of european countries
+european_countries <- c("albania", "andorra", "austria", "belarus", "belgium", "bosnia-herzegovina", "bulgaria", "croatia", "cyprus", "czech-republic", "denmark", "estonia", "faroe-islands", "finland", "france", "germany", "gibraltar", "greece", "hungary", "iceland", "ireland", "italy", "kosovo", "latvia", "liechtenstein", "lithuania", "luxembourg", "malta", "moldova", "montenegro", "netherlands", "north-macedonia", "northern-ireland", "norway", "poland", "portugal", "romania", "russia", "san-marino", "scotland", "serbia", "slovakia", "slovenia", "spain", "sweden", "switzerland", "turkey", "ukraine", "wales", "england")
+# Create a list of north and south american countries
+north_american_countries <- c("canada", "mexico", "united-states","USA")
+# list of central american countries
+central_american_countries <- c("belize", "costa-rica", "el-salvador", "guatemala", "honduras", "nicaragua", "panama")
+south_american_countries <- c("argentina", "bolivia", "brazil", "chile", "colombia", "ecuador", "paraguay", "peru", "uruguay", "venezuela")
+# Create list of australiasian countries
+australasian_countries <- c("australia", "fiji", "new-zealand", "papua-new-guinea", "solomon-islands", "vanuatu")
+# Create list of african countries
+african_countries <- c("algeria", "angola", "benin", "botswana", "burkina-faso", "burundi", "cameroon", "cape-verde", "central-african-republic", "chad", "comoros", "congo", "djibouti", "egypt", "equatorial-guinea", "eritrea", "eswatini", "ethiopia", "gabon", "gambia", "ghana", "guinea", "guinea-bissau", "ivory-coast", "kenya", "lesotho", "liberia", "libya", "madagascar", "malawi", "mali", "mauritania", "mauritius", "morocco", "mozambique", "namibia", "niger", "nigeria", "rwanda", "sao-tome-and-principe", "senegal", "seychelles", "sierra-leone", "somalia", "south-africa", "south-sudan", "sudan", "tanzania", "togo", "tunisia", "uganda", "zambia", "zimbabwe")
+# Create list of asian countries
+asian_countries <- c("afghanistan", "armenia", "azerbaijan", "bahrain", "bangladesh", "bhutan", "brunei", "cambodia", "china", "east-timor", "georgia", "india", "indonesia", "iran")
 
 # plot the annual count of spells using a count of finishes per season assume season starts in August and condition on youth_team
 spells |> 
   filter(staff_position=="manager") |> 
   mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |>
-  group_by(season_start,youth_team) |>
-  count(season_start) 
-
-
-|> 
-  ggplot(aes(x = season_start, y = n)) +
+  group_by(season_start,Answer_1) |>
+  count(season_start)  |> 
+  ggplot(aes(x = season_start, y = n, fill=Answer_1)) +
   geom_col(width = 0.5) +
   labs(title = "", x = "Season", y = "Number of spells") +
   theme_minimal() -> spell_count
-
-
 plotly::ggplotly(spell_count)
 ```
 

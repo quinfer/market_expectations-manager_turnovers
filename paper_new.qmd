@@ -1,0 +1,652 @@
+---
+title: "Market Expectations and Mangerial Turnover"
+author: 
+  - Ronan Gallagher
+  - Barry Quinn
+format: 
+    pdf:
+      fig-pos: "H"
+bibliography: references.bib
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: false
+rm(list = ls())
+library(brms)
+library(tidyverse)
+library(rstan)
+library (tidybayes)
+#reticulate::use_condaenv("pymc")
+
+logit_baseline<-readRDS("models/logit_poach_base.rds")
+hazard_cty<-readRDS("models/grp_lvl_poach_cty.rds")
+hazard_season<-readRDS("models/grp_lvl_poach_season.rds")
+hazard_div <- readRDS("models/grp_lvl_poach_div.rds")
+logit_cty <-readRDS("models/logit_grp_lvl_poach_cty.rds")
+logit_div <- readRDS("models/logit_grp_lvl_poach_div.rds")
+logit_season <- readRDS("models/logit_grp_lvl_poach_season.rds")
+
+logit_baseline |> 
+  spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won)->logit_baseline
+
+hazard_div |>   
+  spread_draws(r_Div[Division,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Div) |>
+  left_join(hazard_div 
+            |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won +
+           Intercept+Pct_of_Possible_Points_Won) -> hazard_div 
+
+logit_div |>   
+  spread_draws(r_Div[Division,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Div) |>
+  left_join(logit_div |> 
+              spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> logit_div 
+
+hazard_cty |>
+  spread_draws(r_country[Country,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_country) |>
+  left_join(hazard_cty |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> hazard_cty
+
+logit_cty |>
+  spread_draws(r_country[Country,Variable]) |>
+  pivot_wider(names_from = Variable,values_from =r_country) |>
+  left_join(logit_cty |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> logit_cty
+  
+hazard_season |>
+  spread_draws(r_Season[Season,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Season) |>
+  left_join(hazard_season |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),
+            by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+
+           Intercept+Pct_of_Possible_Points_Won) -> hazard_season
+
+logit_season |>
+  spread_draws(r_Season[Season,Variable]) |>
+  pivot_wider(names_from = Variable,values_from = r_Season) |>
+  left_join(logit_season |> spread_draws(b_Standardized_CumRS,b_Pct_of_Possible_Points_Won),by=c(".chain",'.iteration')) |>
+  mutate(conditional_mean_CumRS=b_Standardized_CumRS+Intercept+Standardized_CumRS,
+         conditional_mean_Pcts_of_Possible=b_Pct_of_Possible_Points_Won+Intercept+Pct_of_Possible_Points_Won) -> logit_season
+  
+```
+
+```{r}
+# Creating the named vector in R
+cty_factor_vector <- c('E' = "England", 'SP' = "Spain", 'SC' = "Scotland", 'I' = "Italy",
+                    'F' = "France", 'D' = "Germany", 'P' = "Portugal", 
+                    'N' = "Netherlands", 'T' = "Turkey", 'G' = "Greece", 
+                    'B' = "Belgium")
+# Assuming df$factor_var is your factor variable
+logit_cty$cty_factor <- factor(logit_cty$Country, labels = cty_factor_vector)
+hazard_cty$cty_factor <- factor(hazard_cty$Country, labels = cty_factor_vector)
+```
+
+# Introduction
+
+# Literature
+
+**CEO Turnover and Firm Performance**
+
+A robust body of research demonstrates a negative correlation between poor organizational performance and involuntary CEO dismissal (@defond1999effect). Both stock returns and accounting metrics indicate that failing to achieve performance benchmarks raises turnover probability, though the magnitude of effects prove statistically significant yet substantively minimal across analyses [@gibbons1990relative; @farrell2003impact].
+
+Building on seminal insights by @march1958organizations and @cyert1963behavioral, subsequent scholarship illuminates how boards of directors explore solutions and prompt managerial changes when results underperform expectations. Managers able to realise forecasted outputs appear less susceptible to replacement than those unable to reach projected thresholds, irrespective of analogous absolute performance [@bandura1991self; @haleblian2006cognitive]. Boards frequently assess leaders against firm-specific expectations, benchmarking actual versus anticipated outcomes and attributing divergence to the CEO [@greve1998performance; @defond1999effect; @wiersema2011ceo]. As proxies for performance expectations, earnings forecasts strongly predict turnover likelihood, though also capture managerial efforts toward systematic issue management [@ieper2014performance]
+
+**Strategic Expectations Management**
+
+Endogeneity concerns thus emerge, as information asymmetries afford CEOs latitude to strategically time media announcements and influence external stakeholder interpretations [@westphal2010matter; @westphal2011avoiding]. Similarly, football managers degrade expectations through injury pronouncements and other excuses that deflect responsibility. Evidence remains limited regarding precise managerial tactics shaping performance benchmarks [@pieper2014performance]. Some research proposes that higher expectations decrease capital costs and increase share prices [@francis1997relative], while other studies indicate systematic “expectation management” wherein CEOs restrict forecast escalation [@bartov2002rewards; @goyal2002board]. This restraint purportedly reduces involuntary turnover incidence.
+
+The majority of empirical literature upholds poor performance as the primary antecedent of managerial replacement [@groves1995china; @hudson2004managerial]. Though post-succession improvements appear frequently observed, findings regarding causal impacts on organizational outcomes remain mixed [@cools2003value]. Difficulties persist in identifying relevant temporal lags and indicators within corporate performance-turnover analyses.
+
+**Parallels in Sport**
+
+In drawing parallels with corporate leadership, football managers constitute integral strategic and operational decision-makers whose choices shape competitiveness and results [@pieper2014performance]. While factors like injuries constrain agency, negative performance often escalates dismissal odds given close linkages between the managerial role and team outputs [@hoffler2003new]. Contemporary scholarship utilizing bookmaker odds reveals that failure to achieve expected sporting outcomes precipitates coaching turnover [@pieper2014performance; @vanours2016inseason; @bruinshoofd2003manager].
+
+In a rare longitudinal approach, @bachan2005hazard model seasonal hazard rates, determining league position overrides individual attributes in predicting managerial survival. Yet other analyses of match outcomes bypass control group issues while accounting for difficulty variances. @koning2003econometric and @forrest2000behaviour find sporadic evidence that replacement temporarily boosts performance. But several studies propose frequent “scapegoating” wherein termination aims to appease stakeholders rather than improve competition, with managerial change reliably hampering short-term results [@koning2003econometric; @dobson2011economics; @audas2002impact].
+
+@tena2007within importantly highlight financial relegation risks and failing historical powers as motivational factors. While the former escalates turnover incidence, the latter proves insignificant as inferior clubs primarily dismissed coaches. Ultimately, teams appear to utilize termination following perceived underperformance relative to expectations shaped by factors like salary budgets.
+
+# Data
+
+## Manager spell
+
+We build a hand-craft database on the complete manager turnover profiles of all professional football managers across 11 European leagues for 23 playing seasons up to 2023-2024. We use three sources 1. [league of managers association](https://leaguemanagers.com) a body representing professional managers in English football. 2. [Soccer base](https://www.soccerbase.com) a betting website 3. [Transfermkt website](https://www.transfermarkt.co.uk) a large website which records manager, player and team profiles as well as a large array of analytics of the valuation of playing staff. The raw data is gathered using a series of web scrapping algorithms. Our primary source of information is Transfermkt, but we use other sources to validate these manager spells.
+
+```{r}
+library(dplyr)
+library(purrr)
+#spells <- read.csv("raw_data/manager_spells_from_manager_urls_mgronly.csv")
+spells <- readRDS("raw_data/manager_spells_from_manager_urls.rds")
+names(spells)[20:22]<-c("Country","Division", "Full Name")
+```
+
+The raw data from transfrmarkt is then cleaned and processed to create a raw dataset of manager spells. The dataset contains the following columns:
+
+-   `name`: The name of of staff member
+-   `club`: The club of the staff member
+-   `position`: The position of the staff member
+-   `appointed`: The start date of the spell
+-   `contract_expiry`: The end date of the spell
+-   `days_in_charge`: The number of days the manager was in charge of the club
+-   `wins`: Number of wins for spell
+-   `draws`: Number of draws for spell
+-   `losses`: Number of losses for spell
+-   `players_used`: Number of players used in the spell
+-   `avg_goals_for`: Average goals scored per game
+-   `avg_goals_against`: Average goals conceded per game
+-    `ppm`: Points per match
+
+
+```{r}
+
+```
+
+```{r}
+#|label: tbl-managertype
+#| tbl-cap: "Manager types"
+library(kableExtra)
+spells %>%
+  {table(.$staff_position[!is.na(.$staff_position)])} |> sort(decreasing = TRUE) |> 
+  # make the frequency table into a data frame
+  as.data.frame() |>
+  # rename the columns
+  rename("staff_position" = "Var1", "n" = "Freq") |>
+  # order the data frame by the frequency
+  arrange(desc(n)) |>
+  head(20) |>
+  kable(col.names=c("Staff Role","Number")) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = F)
+```
+
+
+
+```{r}
+#| label: fig-annual-spell-count
+#| fig-cap: "Annual count of manager spell ending"
+library(ggplot2)
+library(dplyr)
+# create plot of annual count of spells using a count of finishes per season assume season starts in August
+spells |> 
+  mutate(youth_team = ifelse(str_detect(club, "[A-Z][0-9]{2}|Yth.|Youth"), "Yes", "No")) -> spells
+
+# create a list of european countries
+european_countries <- c("albania", "andorra", "austria", "belarus", "belgium", "bosnia-herzegovina", "bulgaria", "croatia", "cyprus", "czech-republic", "denmark", "estonia", "faroe-islands", "finland", "france", "germany", "gibraltar", "greece", "hungary", "iceland", "ireland", "italy", "kosovo", "latvia", "liechtenstein", "lithuania", "luxembourg", "malta", "moldova", "montenegro", "netherlands", "north-macedonia", "northern-ireland", "norway", "poland", "portugal", "romania", "russia", "san-marino", "scotland", "serbia", "slovakia", "slovenia", "spain", "sweden", "switzerland", "turkey", "ukraine", "wales", "england")
+# Create a list of north and south american countries
+north_american_countries <- c("canada", "mexico", "united-states","USA")
+# list of central american countries
+central_american_countries <- c("belize", "costa-rica", "el-salvador", "guatemala", "honduras", "nicaragua", "panama")
+south_american_countries <- c("argentina", "bolivia", "brazil", "chile", "colombia", "ecuador", "paraguay", "peru", "uruguay", "venezuela")
+# Create list of australiasian countries
+australasian_countries <- c("australia", "fiji", "new-zealand", "papua-new-guinea", "solomon-islands", "vanuatu")
+# Create list of african countries
+african_countries <- c("algeria", "angola", "benin", "botswana", "burkina-faso", "burundi", "cameroon", "cape-verde", "central-african-republic", "chad", "comoros", "congo", "djibouti", "egypt", "equatorial-guinea", "eritrea", "eswatini", "ethiopia", "gabon", "gambia", "ghana", "guinea", "guinea-bissau", "ivory-coast", "kenya", "lesotho", "liberia", "libya", "madagascar", "malawi", "mali", "mauritania", "mauritius", "morocco", "mozambique", "namibia", "niger", "nigeria", "rwanda", "sao-tome-and-principe", "senegal", "seychelles", "sierra-leone", "somalia", "south-africa", "south-sudan", "sudan", "tanzania", "togo", "tunisia", "uganda", "zambia", "zimbabwe")
+# Create list of asian countries
+asian_countries <- c("afghanistan", "armenia", "azerbaijan", "bahrain", "bangladesh", "bhutan", "brunei", "cambodia", "china", "east-timor", "georgia", "india", "indonesia", "iran")
+# Create a list of countries that are not in the above lists
+other_countries <- c("anguilla", "antigua-and-barbuda", "aruba", "bahamas", "barbados", "bermuda", "british-virgin-islands", "cayman-islands", "curacao", "dominica", "falkland-islands", "greenland", "grenada", "guadeloupe", "haiti", "jamaica", "martinique", "montserrat", "netherlands-antilles", "puerto-rico", "saint-kitts-and-nevis", "saint-lucia", "saint-vincent-and-the-grenadines", "sint-maarten", "trinidad-and-tobago", "turks-and-caicos-islands", "us-virgin-islands")
+all_countries <- c(european_countries, north_american_countries, central_american_countries, south_american_countries, australasian_countries, african_countries, asian_countries, other_countries)
+spells |> mutate(national_team = if_else(tolower(club) %in% all_countries,"Yes","No")) -> spells
+# plot the annual count of spells using a count of finishes per season assume season starts in August and condition on youth_team
+```
+
+```{r}
+spells |> 
+  filter(staff_position=="manager" & national_team =="No" & youth_team=="No") |> 
+  mutate(season_start = ifelse(month(Start) < 8, year(Start), year(Start) + 1)) |>
+  group_by(season_start,national_team) |>
+  count(season_start)  |> 
+  ggplot(aes(x = season_start, y = n)) +
+  geom_col(width = 0.5) +
+  labs(title = "Manager-Club spells per annum", x = "Season Start Year", y = "Number of Turnovers") +
+  theme_minimal() -> spell_count
+plotly::ggplotly(spell_count)
+```
+
+
+```{r}
+# Install and load the 'countrycode' package if not already installed
+if (!requireNamespace("countrycode", quietly = TRUE)) {
+  install.packages("countrycode")
+}
+library(countries)
+
+# Get the list of country names
+countries <- list_countries()
+
+# Function to find the country in a text string
+find_country_in_text <- function(text, countries) {
+  for (country in countries) {
+    if (grepl(tolower(country), tolower(text))) {
+      return(country)
+    }
+  }
+  return('NA')
+}
+
+# Assuming your data is in a data frame named 'df' and the text strings are in a column named 'text'
+spells$matched_country <- sapply(spells$Country, function(x) find_country_in_text(x, countries))
+# sanity check
+table(spells$matched_country)
+```
+
+```{r}
+# Assuming the LLM output is stored in a variable called 'llm_output'
+categories <- unique(spells$Country)
+
+# Remove leading/trailing whitespace and convert to lowercase
+categories <- trimws(categories)
+categories <- tolower(categories)
+
+# Remove any leading/trailing punctuation marks
+categories <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", categories)
+
+# Replace ' - ' and ' . ' with '.'
+categories <- gsub(" - | \\. ", ".", categories)
+
+# Replace 'not applicable', 'none', 'unknown', 'not found', 'not available', 'n/a' with NA
+categories[categories %in% c("not applicable", "none", "unknown", "not found", "not available", "n/a","","0")] <- NA
+
+# Categorize responses indicating LLM cannot find answer
+llm_cannot_answer <- grepl("^i am not|^i cannot|^i don't|^i am just an ai|^i'm just an ai", categories)
+categories[llm_cannot_answer] <- "LLM cannot find answer"
+
+# Remove rows with NA values
+categories <- categories[!is.na(categories)]
+
+# Remove duplicate categories
+categories <- unique(categories)
+
+# Sort the categories alphabetically
+categories <- sort(categories)
+categories <- trimws(categories)
+# Print the cleaned categories
+unique(categories) |> write_clip()
+```
+
+```{r}
+library(countries)
+# write to to find partial matches within each string in a list of strings
+countries <- spells$Country
+countries <- tolower(countries)
+countries <- gsub(" - | \\. ", ".", countries)
+countries <- gsub("not applicable|none|unknown|not found|not available|n/a", NA, countries)
+countries <- gsub("i am not|i cannot|i don't|i am just an ai|i'm just an ai", "LLM cannot find answer", countries)
+countries <- countries[!is.na(countries)]
+country_list <-tolower(list_countries())
+sum(countries %in% tolower(list_countries()))
+```
+
+
+```{r}
+# Assuming the list is stored in a variable called 'categories'
+countries <- gsub("^.*\\b(\\w+)\\.*$", "\\1", spells$Country, perl = TRUE)
+
+# Replace common non-country phrases with NA
+non_countries <- c("based on my training data", "based on training data", "LLM cannot find answer", "none", "not applicable", "not found in my training data", "not sure", 
+                   "unknown", "soccer", "tennis", "world cup", "football soccer", "northern", 
+                   "rome", "soccer football", "west africa", "south america", "central america", 
+                   "eastern europe", "north macedonia", "fifa", "uefa", "asia", "eu", "uefa european football association","uefa european", "eurozone", "caribbean", "cricket", "\\bi'm.*", "\\bi have.*", "\\bi cannot.*", 
+                   "\\bi don't.*", "\\bi couldn't.*", "\\bna\\b", "\\bn/a\\b", "i can","\\bi am not aware","i am", "answer:", "africa", "europe", 
+                   "middle east", "east germany", "soviet union", "uae", "uk", "usa", "world")
+countries[countries %in% non_countries] <- NA
+
+# Remove any leading/trailing whitespace
+countries <- trimws(countries)
+
+# Replace empty strings with NA
+countries[countries == ""] <- NA
+
+# Merge similar country names
+# Create a named vector for country name mappings
+country_mappings <- c(
+  "_England_" = "England",
+  "_Belgium_" = "Belgium",
+  "_Germany_" = "Germany",
+  "_Italy_" = "Italy",
+  "_Serbia_" = "Serbia",
+  "England -" = "England",
+  "States" = "United States",
+  "United States -" = "United States",
+  "Kingdom" = "United Kingdom",
+  "United Kingdom UK -" = "United Kingdom",
+  "Democratic Republic of Congo" = "Democratic Republic of the Congo",
+  "Democratic Republic of Congo DRC" = "Democratic Republic of the Congo",
+  "Soviet Union" = "Russia",
+  "Soviet Union former" = "Russia",
+  "Soviet Union formerly" = "Russia",
+  "Russia formerly Soviet Union" = "Russia",
+  "Yugoslavia" = "Serbia",
+  "Yugoslavia now Serbia" = "Serbia",
+  "Yugoslavia or SFR Yugoslavia" = "Serbia",
+  "Serbia formerly Yugoslavia" = "Serbia",
+  "East Germany" = "Germany",
+  "East Germany GDR" = "Germany",
+  "East Germany Germany" = "Germany",
+  "East Germany Germany Democratic Republic" = "Germany",
+  "Macedonia" = "North Macedonia",
+  "Macedonia formerly known as the Republic of Macedonia" = "North Macedonia",
+  "Burma" = "Myanmar",
+  "Myanmar Burma" = "Myanmar",
+  "Congo" = "Democratic Republic of the Congo",
+  "Democratic Republic of Congo DRC" = "Democratic Republic of the Congo",
+  "Ivoire" = "Ivory Coast",
+  "Holland" = "Netherlands",
+  "Holland Netherlands" = "Netherlands",
+  "United Arab Emirates UAE" = "United Arab Emirates",
+  "UAE United Arab Emirates" = "United Arab Emirates",
+  "United Kingdom UK" = "United Kingdom",
+  "UK" = "United Kingdom",
+  "ANDORA" = "Andorra",
+  "Faso" = "Burkina Faso",
+  "Rica" = "Costa Rica",
+  "Salvador" = "El Salvador"
+)
+
+# Merge similar country names using the country_mappings vector
+for (i in seq_along(countries)) {
+  if (countries[i] %in% names(country_mappings)) {
+    countries[i] <- country_mappings[countries[i]]
+  }
+}
+
+# Handle historical country names
+countries[countries == "Czechoslovakia"] <- NA  # Czechoslovakia no longer exists, split into Czech Republic and Slovakia
+
+# Remove additional non-country values
+non_countries <- c("International", "UEFA", "FIFA", "UEFA European", "European", "AFC", "GDR", "EU", "Eurozone", "UEFA European Football Union")
+countries[countries %in% non_countries] <- NA
+
+# Print the extracted country names
+#countries |> table() |> sort(decreasing = TRUE)
+unique(countries) |> write_clip()
+```
+
+
+```{r})
+```
+
+```{r}
+table(countries) |> sort(decreasing = TRUE)
+```
+
+# Methodology
+
+A primary objective when modeling panel data grouped by country, sports leagues, seasons or other categories is allowing for and assessing systematic differences in effects across groups. Standard panel data techniques like fixed effects or random effects models enable some degree of heterogeneity by permitting intercept variation across groups @greene2003econometric. However, these approaches constrain slope coefficients and error variances to be constant. This could overlook meaningful group-level distributions in parameters beyond intercepts.
+
+Hierarchical Bayesian (HB) models instead provide a cohesive framework for directly specifying group-level distributions for any parameters that may logically vary across categories @gelman2013bayesian. Hierarchical Bayesian (HB) models allow both individual and group-level estimates through partial pooling across the model hierarchy. The group-level distributions essentially serve as priors that regularize or shrink the extreme individual-level parameter estimates towards the group mean. At the same time, the group-level estimates themselves are still informed by and capture the cohort and contextual influences from the individual data.
+
+So partial pooling provides a balanced trade-off - it shrinks less stable individual estimates to avoid overfitting, while still allowing the group distributions to represent meaningful variation across cohorts, contexts or other structures in the data. The key idea is that partial pooling up the hierarchy uses the group-level distributions to stabilize and strengthen estimates, while retaining the ability to capture subgroup patterns.
+
+Moreover, HB models facilitate incorporating complex covariance patterns and nonlinear relationships in parameters across groups. @zhang2021racial uses Bayesian cross-classified multilevel analysis to model subtle temporal and group-level interactions in voter turnout - difficult to formulate through panel data methods.
+
+In summary, HB techniques yield a unified modeling approach to characterize inter-group parameter variation. The methodology subsumes traditional panel data econometrics through its flexibility while addressing limitations. The formal probability structure also regulates instability and provides natural group-level effect quantification - particularly critical when data within clusters is sparse. This establishes hierarchical Bayesian modeling as a powerful tool for econometric grouped data analyses.
+
+## Model Specification
+
+The models are:
+
+1.  **HB Logit Model**
+
+$$P(\text{Poached}_{i} = 1 | \text{Points}_{i}, \text{RSI}_{i}) = \mathrm{logit}^{-1}(\alpha_{l[i]} + \beta_{1,l[i]} \text{Points}_{i} + \beta_{2,l[i]} \text{RSI}_{i} + \epsilon_{i})$$
+
+2.  **HB Proportional Hazard Model**
+
+$$h(t|X_{i}) = h_{0}(t)\exp(\alpha_{l[i]} + \beta_{1,l[i]} \text{Points}_{i} + \beta_{2,l[i]} \text{RSI}_{i}) $$
+
+The $t$ is the time to hazard in games in charges. The subscript $l[i]$ allows coefficient variation across groups. We investigate hierarchies across season, country and country-tier. Hierarchical priors on $\alpha,\beta$ parameters share data to obtain better estimates, even for new leagues or clubs.
+
+# Results
+
+## Baseline logit model
+
+```{r}
+#| label: baseline-logit
+#| eval: false
+# This code is set yo not run, to set to run change eval to eval: true
+dfanal=read_csv("./data/df_anal_new.csv")
+rstan_options(auto_write=TRUE)  
+options(mc.cores=parallel::detectCores ()) # Run on multiple cores
+#set_cmdstan_path(path="/home/barry/.cmdstan/cmdstan-2.33.1")
+dfanal |> drop_na(event,Standardized_CumRS,Pct_of_Possible_Points_Won,Div,`Domestic Games in Charge`)
+dfanal$games_to_event<-dfanal$`Domestic Games in Charge`
+model <- brm(poach ~ 1 + Standardized_CumRS + Pct_of_Possible_Points_Won,
+             data = dfanal,
+             family = bernoulli(), # Specifies a logit model for binary outcome
+             warmup = 1000, # Number of warmup iterations for the MCMC
+             iter = 5000, # Total number of iterations for the MCMC
+             chains = 4, # Number of chains
+             cores = 4, # Number of cores for parallel execution
+             control = list(adapt_delta = 0.95), # Control parameters for the NUTS sampler
+             seed=5678)
+
+end=Sys.time()
+print(end-start)
+model |> summary()
+
+saveRDS(model ,"logit_poach_base.rds")
+
+```
+
+```{r}
+logit_baseline |>
+  rename("Points of of Possible"=b_Pct_of_Possible_Points_Won,
+         "Cumulative Relative Strength"=b_Standardized_CumRS)
+         
+          |>
+  pivot_longer(!.draw &!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
+  ggplot(aes(y = fixed_effect,
+             x=draws)) +
+  stat_slab() +
+  labs(x="",
+       title="Baseline model for probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Fixed Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_baseline.png",width = 12,height = 8)  
+
+  
+```
+
+```{r}
+logit_baseline |>
+  rename("Points of of Possible"=b_Pct_of_Possible_Points_Won,
+         "Cumulative Relative Strength"=b_Standardized_CumRS)
+  pivot_longer(!.draw&!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
+  ggplot(aes(y = fixed_effect,
+             x=draws)) +
+  stat_slab() +
+  labs(x="",
+       title="Baseline model for probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Fixed Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_baseline.png",width = 12,height = 8)  
+
+  
+```
+
+```{r}
+logit |> 
+  ungroup() |>
+  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(cty_factor,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(cty_factor,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_cty.png",width = 12,height = 8)  
+
+```
+
+## Baseline hazard model
+
+## group level logit models
+
+```{r}
+logit_cty |> 
+  ungroup() |>
+  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(cty_factor,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(cty_factor,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on probability of poaching",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_cty.png",width = 12,height = 8)  
+
+```
+
+```{r}
+logit_season |> 
+  ungroup() |>
+  select(Season,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Season&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>
+  mutate(first_year = as.numeric(map_chr(str_split(Season, "-"), ~ .x[1]))) |>
+  ggplot(aes(x = reorder(Season,first_year),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effects on the probability of poaching",
+       subtitle="Posterior probabilities from a bayesian hierarchical model",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_season.png",width = 12,height = 8)  
+```
+
+```{r}
+logit_div |> 
+  ungroup() |>
+  select(Division,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Division &!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |> 
+   group_by(Division,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(Division,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effects on the probability of poaching",
+       subtitle="Posterior probabilities from a bayesian hierarchical model",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/logit_by_div.png",width = 12,height = 8)  
+```
+
+## group level hazard models
+
+```{r}
+hazard_cty |> 
+  ungroup() |>
+  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(cty_factor,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(cty_factor,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on poaching hazard rate",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/hazard_by_cty.png",width = 12,height = 8)  
+
+```
+
+```{r}
+hazard_season |> 
+  ungroup() |>
+  select(Season,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Season&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>
+  mutate(first_year = as.numeric(map_chr(str_split(Season, "-"), ~ .x[1]))) |>
+  ggplot(aes(x = reorder(Season,first_year),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effects on the probability of poaching",
+       subtitle="Posterior probabilities from a bayesian hierarchical model",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/hazard_by_season.png",width = 12,height = 8)  
+```
+
+```{r}
+hazard_div |> 
+  ungroup() |>
+  select(Division,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
+  pivot_longer(!Division&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
+  group_by(Division,conditional_mean) |>
+  mutate(global_mean=mean(draws)) |>
+  ggplot(aes(x = reorder(Division,global_mean),
+             y=draws, 
+             fill =conditional_mean)) +
+  stat_slab() +
+  labs(x="",
+       title="Overall effect on poaching hazard rate",
+       subtitle="Posterior probability distribution",
+       y="Overall Effect",fill="")  +
+  theme(axis.text.x = element_text(angle = 45,hjust = 1),
+        title = element_text(hjust = 0.5),
+        legend.position = "bottom") +
+  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
+ggsave(filename = "./plots/hazard_by_div.png",width = 12,height = 8)  
+
+```
