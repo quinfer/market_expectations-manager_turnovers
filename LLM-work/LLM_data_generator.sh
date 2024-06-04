@@ -4,7 +4,19 @@
 counter=0
 
 # Read the prompt template from prompt_template.txt
-prompt_template=$(cat prompt_template.txt)
+prompt_template=$(cat prompts/llama3_prompt.txt)
+
+# Clear the master output files
+> master_output_test.jsonl
+> master_output_test.json
+
+
+# Get the total number of lines in the input file (excluding the header)
+if [[ -f "${1:-/dev/stdin}" ]]; then
+    total_lines=$(wc -l < "${1:-/dev/stdin}")
+else
+    total_lines=0
+fi
 
 # Function to make a call to the local LLM and parse the response
 api_call() {
@@ -16,18 +28,19 @@ api_call() {
     local prompt=$(echo "$prompt_template" | sed "s/<club_name>/${club_name}/g; s/<end_of_spell>/${end_of_spell}/g")
 
     # Call the local LLM model
-    echo "$prompt" | ollama run llama3:70b > "$temp_output"
+    echo "$prompt" | ollama run llama3 > "$temp_output"
     local response=$(cat "$temp_output")
 
     # Extract the JSON part from the response
-    local json_response=$(echo "$response" | sed -n '/<|start_header_id|>assistant<|end_header_id|>/,/<|eot_id|>/p' | sed 's/<|start_header_id|>assistant<|end_header_id|>//' | sed 's/<|eot_id|>//')
+#   local json_response=$(echo "$response" | sed -n '/<|start_header_id|>assistant<|end_header_id|>/,/<|eot_id|>/p' | sed 's/<|start_header_id|>assistant<|end_header_id|>//' | sed 's/<|eot_id|>//')
 
     # Increment counter
     ((counter++))
     echo "Processing club ${club_name} (${end_of_spell}) - ${counter} of ${total_lines} processed"
-
+    echo "$prompt"
     # Write the JSON response to the master output file
-    echo "$json_response" >> master_output.jsonl
+#    echo "$json_response" >> master_output.jsonl
+     echo "$response" >> master_output_test.jsonl
 }
 
 # Read input from a file or stdin
@@ -44,7 +57,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "${1:-/dev/stdin}"
 
 # Create a valid JSON array from the JSONL file
-jq --slurp '.' master_output.jsonl > master_output.json
+#jq --slurp '.' master_output_test.jsonl > master_output.json
 
 # Convert JSON to CSV
-jq -r '[["club_name", "end_of_spell", "spell_type", "country", "tier", "country_probability", "tier_probability"]] + (.[].response.variables[] | [.value, .value]) + (.[].response.results[] | [.value, .value, .value, .value, .value])' master_output.json > master_output.csv
+#jq -r '[["club_name", "end_of_spell", "spell_type", "country", "tier", "country_probability", "tier_probability"]] + (.[].response.variables[] | [.value, .value]) + (.[].response.results[] | [.value, .value, .value, .value, .value])' master_output.json > master_output.csv
