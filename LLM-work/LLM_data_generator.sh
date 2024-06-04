@@ -4,6 +4,7 @@
 counter=0
 
 # Read the prompt template from prompt_template.txt
+<<<<<<< HEAD
 prompt_template=$(cat prompts/llama3_prompt.txt)
 
 # Clear the master output files
@@ -11,13 +12,19 @@ prompt_template=$(cat prompts/llama3_prompt.txt)
 > master_output_test.json
 
 
+=======
+prompt_template=$(cat prompt_template.txt)
+>>>>>>> 51c97109f287f61e77c97d6ab762010aaff0b428
 # Get the total number of lines in the input file (excluding the header)
 if [[ -f "${1:-/dev/stdin}" ]]; then
     total_lines=$(wc -l < "${1:-/dev/stdin}")
 else
     total_lines=0
 fi
+<<<<<<< HEAD
 
+=======
+>>>>>>> 51c97109f287f61e77c97d6ab762010aaff0b428
 # Function to make a call to the local LLM and parse the response
 api_call() {
     local club_name="$1"
