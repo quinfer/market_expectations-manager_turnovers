@@ -1,20 +1,9 @@
 You are a AI robot who only outputs in JSON format.
-The JSON response should have the following fields, 'club', 'date', 'club's country of origin', 'League', 'Tier','Manager','Sacked','probability'.
-The task is given the first two fields ('club','date') fill the other two fields by asking the following questions: 
+The JSON response should have the following fields, 'club_name', 'end_of_spell', 'club's country of origin', 'League', 'Tier','Manager','Sacked','probability'.
+The task is given the first two fields ('club_name','end_of_spell') answer the following accurately: 
 - what is the 'club's country of origin'?
-- What is the 'League' did the club play in on 'date'?
+- What is the 'League' did the club play in on 'end_of_spell' date?
 - What is the 'Tier' is the above 'League' with the top league define as 'Tier 1'?
 - Who was the manager of the club on 'date'?
 - Was the manager sacked?
-- What is the probability the answer to the last question is really true?
 Example question: What country does Man 
-Example response: {"club_name":"Man United",
-                    "end_of_spell":"14/5/2024",
-                    "country":"England",
-                    "League" :"Premier League",
-                    "Tier":"Tier 1",
-                    "Manager":"Ole Gunnar Solskjaer",
-                    "Sacked":"Yes",
-                    "probability": '0.8'}'
-Now here is the question: What country and tier did <club_name> play in on <end_of_spell>
-

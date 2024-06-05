@@ -3,9 +3,11 @@ title: "Market Expectations and Mangerial Turnover"
 author: 
   - Ronan Gallagher
   - Barry Quinn
-format: 
-    pdf:
-      fig-pos: "H"
+format:
+  pdf: default
+  elsevier-pdf:
+    keep-tex: true    
+    fig-pos: "H"
 bibliography: references.bib
 execute: 
   echo: false
@@ -217,175 +219,9 @@ spells |>
   geom_col(width = 0.5) +
   labs(title = "Manager-Club spells per annum", x = "Season Start Year", y = "Number of Turnovers") +
   theme_minimal() -> spell_count
-plotly::ggplotly(spell_count)
+spell_count
 ```
 
-
-```{r}
-# Install and load the 'countrycode' package if not already installed
-if (!requireNamespace("countrycode", quietly = TRUE)) {
-  install.packages("countrycode")
-}
-library(countries)
-
-# Get the list of country names
-countries <- list_countries()
-
-# Function to find the country in a text string
-find_country_in_text <- function(text, countries) {
-  for (country in countries) {
-    if (grepl(tolower(country), tolower(text))) {
-      return(country)
-    }
-  }
-  return('NA')
-}
-
-# Assuming your data is in a data frame named 'df' and the text strings are in a column named 'text'
-spells$matched_country <- sapply(spells$Country, function(x) find_country_in_text(x, countries))
-# sanity check
-table(spells$matched_country)
-```
-
-```{r}
-# Assuming the LLM output is stored in a variable called 'llm_output'
-categories <- unique(spells$Country)
-
-# Remove leading/trailing whitespace and convert to lowercase
-categories <- trimws(categories)
-categories <- tolower(categories)
-
-# Remove any leading/trailing punctuation marks
-categories <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", categories)
-
-# Replace ' - ' and ' . ' with '.'
-categories <- gsub(" - | \\. ", ".", categories)
-
-# Replace 'not applicable', 'none', 'unknown', 'not found', 'not available', 'n/a' with NA
-categories[categories %in% c("not applicable", "none", "unknown", "not found", "not available", "n/a","","0")] <- NA
-
-# Categorize responses indicating LLM cannot find answer
-llm_cannot_answer <- grepl("^i am not|^i cannot|^i don't|^i am just an ai|^i'm just an ai", categories)
-categories[llm_cannot_answer] <- "LLM cannot find answer"
-
-# Remove rows with NA values
-categories <- categories[!is.na(categories)]
-
-# Remove duplicate categories
-categories <- unique(categories)
-
-# Sort the categories alphabetically
-categories <- sort(categories)
-categories <- trimws(categories)
-# Print the cleaned categories
-unique(categories) |> write_clip()
-```
-
-```{r}
-library(countries)
-# write to to find partial matches within each string in a list of strings
-countries <- spells$Country
-countries <- tolower(countries)
-countries <- gsub(" - | \\. ", ".", countries)
-countries <- gsub("not applicable|none|unknown|not found|not available|n/a", NA, countries)
-countries <- gsub("i am not|i cannot|i don't|i am just an ai|i'm just an ai", "LLM cannot find answer", countries)
-countries <- countries[!is.na(countries)]
-country_list <-tolower(list_countries())
-sum(countries %in% tolower(list_countries()))
-```
-
-
-```{r}
-# Assuming the list is stored in a variable called 'categories'
-countries <- gsub("^.*\\b(\\w+)\\.*$", "\\1", spells$Country, perl = TRUE)
-
-# Replace common non-country phrases with NA
-non_countries <- c("based on my training data", "based on training data", "LLM cannot find answer", "none", "not applicable", "not found in my training data", "not sure", 
-                   "unknown", "soccer", "tennis", "world cup", "football soccer", "northern", 
-                   "rome", "soccer football", "west africa", "south america", "central america", 
-                   "eastern europe", "north macedonia", "fifa", "uefa", "asia", "eu", "uefa european football association","uefa european", "eurozone", "caribbean", "cricket", "\\bi'm.*", "\\bi have.*", "\\bi cannot.*", 
-                   "\\bi don't.*", "\\bi couldn't.*", "\\bna\\b", "\\bn/a\\b", "i can","\\bi am not aware","i am", "answer:", "africa", "europe", 
-                   "middle east", "east germany", "soviet union", "uae", "uk", "usa", "world")
-countries[countries %in% non_countries] <- NA
-
-# Remove any leading/trailing whitespace
-countries <- trimws(countries)
-
-# Replace empty strings with NA
-countries[countries == ""] <- NA
-
-# Merge similar country names
-# Create a named vector for country name mappings
-country_mappings <- c(
-  "_England_" = "England",
-  "_Belgium_" = "Belgium",
-  "_Germany_" = "Germany",
-  "_Italy_" = "Italy",
-  "_Serbia_" = "Serbia",
-  "England -" = "England",
-  "States" = "United States",
-  "United States -" = "United States",
-  "Kingdom" = "United Kingdom",
-  "United Kingdom UK -" = "United Kingdom",
-  "Democratic Republic of Congo" = "Democratic Republic of the Congo",
-  "Democratic Republic of Congo DRC" = "Democratic Republic of the Congo",
-  "Soviet Union" = "Russia",
-  "Soviet Union former" = "Russia",
-  "Soviet Union formerly" = "Russia",
-  "Russia formerly Soviet Union" = "Russia",
-  "Yugoslavia" = "Serbia",
-  "Yugoslavia now Serbia" = "Serbia",
-  "Yugoslavia or SFR Yugoslavia" = "Serbia",
-  "Serbia formerly Yugoslavia" = "Serbia",
-  "East Germany" = "Germany",
-  "East Germany GDR" = "Germany",
-  "East Germany Germany" = "Germany",
-  "East Germany Germany Democratic Republic" = "Germany",
-  "Macedonia" = "North Macedonia",
-  "Macedonia formerly known as the Republic of Macedonia" = "North Macedonia",
-  "Burma" = "Myanmar",
-  "Myanmar Burma" = "Myanmar",
-  "Congo" = "Democratic Republic of the Congo",
-  "Democratic Republic of Congo DRC" = "Democratic Republic of the Congo",
-  "Ivoire" = "Ivory Coast",
-  "Holland" = "Netherlands",
-  "Holland Netherlands" = "Netherlands",
-  "United Arab Emirates UAE" = "United Arab Emirates",
-  "UAE United Arab Emirates" = "United Arab Emirates",
-  "United Kingdom UK" = "United Kingdom",
-  "UK" = "United Kingdom",
-  "ANDORA" = "Andorra",
-  "Faso" = "Burkina Faso",
-  "Rica" = "Costa Rica",
-  "Salvador" = "El Salvador"
-)
-
-# Merge similar country names using the country_mappings vector
-for (i in seq_along(countries)) {
-  if (countries[i] %in% names(country_mappings)) {
-    countries[i] <- country_mappings[countries[i]]
-  }
-}
-
-# Handle historical country names
-countries[countries == "Czechoslovakia"] <- NA  # Czechoslovakia no longer exists, split into Czech Republic and Slovakia
-
-# Remove additional non-country values
-non_countries <- c("International", "UEFA", "FIFA", "UEFA European", "European", "AFC", "GDR", "EU", "Eurozone", "UEFA European Football Union")
-countries[countries %in% non_countries] <- NA
-
-# Print the extracted country names
-#countries |> table() |> sort(decreasing = TRUE)
-unique(countries) |> write_clip()
-```
-
-
-```{r})
-```
-
-```{r}
-table(countries) |> sort(decreasing = TRUE)
-```
 
 # Methodology
 
@@ -448,9 +284,7 @@ saveRDS(model ,"logit_poach_base.rds")
 ```{r}
 logit_baseline |>
   rename("Points of of Possible"=b_Pct_of_Possible_Points_Won,
-         "Cumulative Relative Strength"=b_Standardized_CumRS)
-         
-          |>
+         "Cumulative Relative Strength"=b_Standardized_CumRS) |>
   pivot_longer(!.draw &!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
   ggplot(aes(y = fixed_effect,
              x=draws)) +
@@ -471,8 +305,8 @@ ggsave(filename = "./plots/logit_baseline.png",width = 12,height = 8)
 ```{r}
 logit_baseline |>
   rename("Points of of Possible"=b_Pct_of_Possible_Points_Won,
-         "Cumulative Relative Strength"=b_Standardized_CumRS)
-  pivot_longer(!.draw&!.iteration&!.chain,names_to = "fixed_effect",values_to = "draws")|>
+         "Cumulative Relative Strength"=b_Standardized_CumRS) |>
+  pivot_longer(!.draw & !.iteration &!.chain,names_to = "fixed_effect",values_to = "draws")|>
   ggplot(aes(y = fixed_effect,
              x=draws)) +
   stat_slab() +
@@ -487,29 +321,6 @@ logit_baseline |>
 ggsave(filename = "./plots/logit_baseline.png",width = 12,height = 8)  
 
   
-```
-
-```{r}
-logit |> 
-  ungroup() |>
-  select(cty_factor,.iteration,.chain,conditional_mean_CumRS,conditional_mean_Pcts_of_Possible) |>
-  pivot_longer(!cty_factor&!.iteration&!.chain,names_to = "conditional_mean",values_to = "draws") |>  
-  group_by(cty_factor,conditional_mean) |>
-  mutate(global_mean=mean(draws)) |>
-  ggplot(aes(x = reorder(cty_factor,global_mean),
-             y=draws, 
-             fill =conditional_mean)) +
-  stat_slab() +
-  labs(x="",
-       title="Overall effect on probability of poaching",
-       subtitle="Posterior probability distribution",
-       y="Overall Effect",fill="")  +
-  theme(axis.text.x = element_text(angle = 45,hjust = 1),
-        title = element_text(hjust = 0.5),
-        legend.position = "bottom") +
-  scale_fill_discrete(labels=c("Cumulative Relative Strength","Points out of Possible Points"))
-ggsave(filename = "./plots/logit_by_cty.png",width = 12,height = 8)  
-
 ```
 
 ## Baseline hazard model

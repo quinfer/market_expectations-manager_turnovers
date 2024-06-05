@@ -1,0 +1,2 @@
+export GROQ_API_KEY="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"
+#python your_script.py
